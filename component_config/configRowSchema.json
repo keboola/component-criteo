@@ -1,0 +1,101 @@
+{
+  "type": "object",
+  "title": "extractor configuration",
+  "required": [
+    "out_table_name",
+    "dimensions",
+    "metrics",
+    "date_range"
+  ],
+  "properties": {
+    "out_table_name": {
+      "type": "string",
+      "title": "Output name",
+      "description": "Name of output table in storage",
+      "propertyOrder": 1
+    },
+    "dimensions": {
+      "type": "string",
+      "title": "Dimensions",
+      "minLength": 1,
+      "description": "Dimensions to fetch for report eg. CampaignId, Day, Category",
+      "propertyOrder": 10
+    },
+    "metrics": {
+      "type": "string",
+      "title": "Metrics",
+      "minLength": 1,
+      "description": "Metrics to fetch for report eg. Clicks, Displays, AdvertiserCost",
+      "propertyOrder": 20
+    },
+    "date_range": {
+      "title": "Date range type",
+      "type": "string",
+      "enum": [
+          "Last week (sun-sat)",
+          "Last month",
+          "Custom"
+      ],
+      "propertyOrder": 30
+    },
+    "date_from": {
+      "title": "Date from",
+      "type": "string",
+      "options": {
+        "dependencies": {
+          "date_range": "Custom"
+        }
+      },
+      "description": "Start date of the report eg. 3 days ago",
+      "propertyOrder": 40
+    },
+    "date_to": {
+      "title": "Date to",
+      "type": "string",
+      "options": {
+        "dependencies": {
+          "date_range": "Custom"
+        }
+      },
+      "description": "End date of the report eg. 1 day ago",
+      "propertyOrder": 50
+    },
+    "loading_options": {
+      "type": "object",
+      "title": "Loading Options",
+      "propertyOrder": 100,
+      "required": [
+        "incremental"
+      ],
+      "properties": {
+        "pkey": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "title": "Primary key column"
+          },
+          "default": [],
+          "title": "Primary key",
+          "propertyOrder": 5000
+        },
+        "incremental": {
+          "type": "integer",
+          "enum": [
+            0,
+            1
+          ],
+          "options": {
+            "enum_titles": [
+              "Full Load",
+              "Incremental Update"
+            ]
+          },
+          "default": 1,
+          "title": "Load type",
+          "description": "If set to Incremental update, the result tables will be updated based on primary key and new records will be fetched. Full load overwrites the destination table each time.",
+          "propertyOrder": 200
+        }
+      }
+    }
+  }
+}

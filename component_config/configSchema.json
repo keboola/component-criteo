@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "title": "extractor configuration",
+  "required": [
+    "#client_id",
+    "#client_secret"
+  ],
+  "properties": {
+    "#client_id": {
+      "type": "string",
+      "title": "Client ID",
+      "propertyOrder": 1
+    },
+    "#client_secret": {
+      "type": "string",
+      "title": "Client secret",
+      "propertyOrder": 2
+    }
+  }
+}

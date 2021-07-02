@@ -1,0 +1,7 @@
+keboola.component==1.1.0
+keboola.utils
+keboola.http-client
+mock
+freezegun
+criteo_marketing_transition
+retry
