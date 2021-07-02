@@ -33,7 +33,8 @@
       "title": "Currency",
       "minLength": 1,
       "description": "Currency for report, default EUR",
-      "propertyOrder": 25
+      "propertyOrder": 25,
+      "default" : "EUR"
     },
     "date_range": {
       "title": "Date range type",
