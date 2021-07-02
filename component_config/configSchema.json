@@ -1,6 +1,6 @@
 {
   "type": "object",
-  "title": "extractor configuration",
+  "title": "Authorization settings",
   "required": [
     "#client_id",
     "#client_secret"

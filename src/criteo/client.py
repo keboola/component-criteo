@@ -1,5 +1,4 @@
 from __future__ import print_function
-from retry import retry
 import criteo_marketing_transition as cm
 from criteo_marketing_transition import Configuration
 
@@ -12,8 +11,7 @@ class CriteoClient:
         configuration = Configuration(username=username, password=password)
         self.client = cm.ApiClient(configuration)
 
-    @retry(tries=3, delay=3)
-    def get_report(self, dimensions, metrics, date_from, date_to, currency="EUR"):
+    def get_report(self, dimensions, metrics, date_from, date_to, currency):
         analytics_api = cm.AnalyticsApi(self.client)
         stats_query_message = cm.StatisticsReportQueryMessage(
             dimensions=dimensions,

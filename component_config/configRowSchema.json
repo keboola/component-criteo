@@ -1,6 +1,6 @@
 {
   "type": "object",
-  "title": "extractor configuration",
+  "title": "Report configuration",
   "required": [
     "out_table_name",
     "dimensions",
@@ -11,7 +11,7 @@
     "out_table_name": {
       "type": "string",
       "title": "Output name",
-      "description": "Name of output table in storage",
+      "description": "Name of output table in storage eg. CampaignReport",
       "propertyOrder": 1
     },
     "dimensions": {
@@ -27,6 +27,13 @@
       "minLength": 1,
       "description": "Metrics to fetch for report eg. Clicks, Displays, AdvertiserCost",
       "propertyOrder": 20
+    },
+    "currency": {
+      "type": "string",
+      "title": "Currency",
+      "minLength": 1,
+      "description": "Currency for report, default EUR",
+      "propertyOrder": 25
     },
     "date_range": {
       "title": "Date range type",
@@ -90,7 +97,7 @@
               "Incremental Update"
             ]
           },
-          "default": 1,
+          "default": 0,
           "title": "Load type",
           "description": "If set to Incremental update, the result tables will be updated based on primary key and new records will be fetched. Full load overwrites the destination table each time.",
           "propertyOrder": 200
