@@ -91,6 +91,9 @@ class Component(ComponentBase):
         for date_range in date_ranges:
             logging.info(f"Downloading report chunk from {date_range[0]} to {date_range[1]}")
             response = self._fetch_report(client, dimensions, metrics, date_range[0], date_range[1], currency)
+            row_count = response.count("\n")
+            if row_count >= API_ROW_LIMIT:
+                raise UserException("Fetching of data failed, please create a smaller date range for the report")
             with open(temp.name, 'a', encoding='utf-8') as out:
                 out.write(response)
         return temp
