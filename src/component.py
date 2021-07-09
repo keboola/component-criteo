@@ -3,7 +3,7 @@ import tempfile
 import logging
 import dateparser
 import json
-from criteo.client import CriteoClient
+from criteo.client import CriteoClient, ApiDataException
 from datetime import date
 from datetime import timedelta
 from keboola.utils.header_normalizer import get_normalizer, NormalizerStrategy
@@ -48,7 +48,7 @@ class Component(ComponentBase):
         date_to = params.get(KEY_DATE_TO)
         date_range = params.get(KEY_DATE_RANGE)
         date_from, date_to = self.get_date_range(date_from, date_to, date_range)
-
+        date_ranges = self.split_date_range(date_from, date_to)
         out_table_name = params.get(KEY_OUT_TABLE_NAME)
 
         loading_options = params.get(KEY_LOADING_OPTIONS)
@@ -66,7 +66,10 @@ class Component(ComponentBase):
         dimensions = self.parse_list_from_string(dimensions)
 
         currency = params.get(KEY_CURRENCY, "EUR")
-        temp_file = self.fetch_data(client, dimensions, metrics, date_from, date_to, currency)
+        logging.info(
+            f"Fetching report data for dimensions : {dimensions}, metrics : {metrics}, from {date_from} to "
+            f"{date_to}, with currency : {currency}")
+        temp_file = self.fetch_data(client, dimensions, metrics, date_ranges, currency)
 
         header_normalizer = get_normalizer(NormalizerStrategy.DEFAULT)
         out_table_name = header_normalizer.normalize_header([out_table_name])[0]
@@ -77,19 +80,13 @@ class Component(ComponentBase):
         table.columns = header_normalizer.normalize_header(fieldnames)
         self.write_tabledef_manifest(table)
 
-    def fetch_data(self, client, dimensions, metrics, date_from, date_to, currency):
-
-        logging.info(
-            f"Fetching report data for dimensions : {dimensions}, metrics : {metrics}, from {date_from} to "
-            f"{date_to}, with currency : {currency}")
-
-        response = self._fetch_report(client, dimensions, metrics, date_from, date_to, currency)
-
-        logging.info("Report downloaded, parsing results")
-
+    def fetch_data(self, client, dimensions, metrics, date_ranges, currency):
         temp = tempfile.NamedTemporaryFile(mode='w+b', suffix='.csv', delete=False)
-        with open(temp.name, 'w', encoding='utf-8') as out:
-            out.write(response)
+        for date_range in date_ranges:
+            response = self._fetch_report(client, dimensions, metrics, date_range[0], date_range[1], currency)
+            logging.info(f"Downloading report chunk from {date_range[0]} to {date_range[1]}")
+            with open(temp.name, 'a', encoding='utf-8') as out:
+                out.write(response)
         return temp
 
     @staticmethod
@@ -110,6 +107,8 @@ class Component(ComponentBase):
                         f" {errors[0]['detail']}") from api_exception
                 else:
                     raise UserException("Invalid dimensions, please recheck your configuration") from api_exception
+        except ApiDataException as data_exception:
+            raise UserException(f"API exception code {data_exception}")
 
     @staticmethod
     def write_from_temp_to_table(temp_file_path, table_path, delimiter):
@@ -140,6 +139,16 @@ class Component(ComponentBase):
             except AttributeError:
                 raise UserException("Invalid custom date, please check documentation for valid inputs")
         return date_from, date_to
+
+    @staticmethod
+    def split_date_range(startdate, enddate, delta=timedelta(days=30)):
+        currentdate = startdate
+        todate = startdate
+        while currentdate + delta < enddate:
+            todate = currentdate + delta
+            yield str(currentdate), str(todate)
+            currentdate += delta + timedelta(days=1)
+        yield str(todate), str(enddate)
 
     @staticmethod
     def get_last_week_dates():

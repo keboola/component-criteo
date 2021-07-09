@@ -6,6 +6,10 @@ from criteo_marketing_transition import Configuration
 GRANT_TYPE = 'client_credentials'
 
 
+class ApiDataException(Exception):
+    pass
+
+
 class CriteoClient:
     def __init__(self, username, password):
         configuration = Configuration(username=username, password=password)
@@ -27,3 +31,5 @@ class CriteoClient:
             content_disposition = response_headers["Content-Disposition"]
             if content_disposition:
                 return response_content
+        else:
+            raise ApiDataException(str(http_code))
