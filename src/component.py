@@ -25,6 +25,8 @@ KEY_LOADING_OPTIONS = "loading_options"
 KEY_LOADING_OPTIONS_INCREMENTAL = "incremental"
 KEY_LOADING_OPTIONS_PKEY = "pkey"
 
+API_ROW_LIMIT = 100000
+
 REQUIRED_PARAMETERS = [KEY_CLIENT_ID, KEY_CLIENT_SECRET, KEY_DATE_RANGE, KEY_OUT_TABLE_NAME, KEY_METRICS,
                        KEY_DIMENSIONS]
 REQUIRED_IMAGE_PARS = []
@@ -44,13 +46,6 @@ class Component(ComponentBase):
 
         client = CriteoClient(client_id, client_secret)
 
-        date_from = params.get(KEY_DATE_FROM)
-        date_to = params.get(KEY_DATE_TO)
-        date_range = params.get(KEY_DATE_RANGE)
-        date_from, date_to = self.get_date_range(date_from, date_to, date_range)
-        date_ranges = self.split_date_range(date_from, date_to)
-        out_table_name = params.get(KEY_OUT_TABLE_NAME)
-
         loading_options = params.get(KEY_LOADING_OPTIONS)
         incremental = loading_options.get(KEY_LOADING_OPTIONS_INCREMENTAL)
         pkey = loading_options.get(KEY_LOADING_OPTIONS_PKEY, [])
@@ -66,6 +61,16 @@ class Component(ComponentBase):
         dimensions = self.parse_list_from_string(dimensions)
 
         currency = params.get(KEY_CURRENCY, "EUR")
+
+        date_from = params.get(KEY_DATE_FROM)
+        date_to = params.get(KEY_DATE_TO)
+        date_range = params.get(KEY_DATE_RANGE)
+        date_from, date_to = self.get_date_range(date_from, date_to, date_range)
+
+        day_delay = self.estimate_day_delay(client, dimensions, metrics, date_to, currency)
+        date_ranges = self.split_date_range(date_from, date_to, day_delay)
+        out_table_name = params.get(KEY_OUT_TABLE_NAME)
+
         logging.info(
             f"Fetching report data for dimensions : {dimensions}, metrics : {metrics}, from {date_from} to "
             f"{date_to}, with currency : {currency}")
@@ -141,14 +146,15 @@ class Component(ComponentBase):
         return date_from, date_to
 
     @staticmethod
-    def split_date_range(startdate, enddate, delta=timedelta(days=30)):
+    def split_date_range(startdate, enddate, day_delay):
+        delta = timedelta(days=day_delay)
         currentdate = startdate
         todate = startdate
         while currentdate + delta < enddate:
             todate = currentdate + delta
             yield str(currentdate), str(todate)
             currentdate += delta + timedelta(days=1)
-        yield str(todate), str(enddate)
+        yield str(todate + timedelta(days=1)), str(enddate)
 
     @staticmethod
     def get_last_week_dates():
@@ -162,6 +168,15 @@ class Component(ComponentBase):
         last_day_of_prev_month = date.today().replace(day=1) - timedelta(days=1)
         start_day_of_prev_month = date.today().replace(day=1) - timedelta(days=last_day_of_prev_month.day)
         return start_day_of_prev_month, last_day_of_prev_month
+
+    def estimate_day_delay(self, client, dimensions, metrics, date_to, currency):
+        date_to = date_to - timedelta(days=1)
+        date_from = date_to - timedelta(days=6)
+        rows_per_day = self._fetch_report(client, dimensions, metrics, date_from, date_to, currency).count("\n")/7
+
+        # report range is maximum amount of days to get 50% of the api row limit size
+        report_range = int((API_ROW_LIMIT*0.5)/rows_per_day)
+        return report_range
 
 
 if __name__ == "__main__":
