@@ -75,7 +75,7 @@ class Component(ComponentBase):
             f"Fetching report data for dimensions : {dimensions}, metrics : {metrics}, from {date_from} to "
             f"{date_to}, with currency : {currency}")
         temp_file = self.fetch_data(client, dimensions, metrics, date_ranges, currency)
-        logging.info(f"Parsing downloaded results")
+        logging.info("Parsing downloaded results")
 
         header_normalizer = get_normalizer(NormalizerStrategy.DEFAULT)
         out_table_name = header_normalizer.normalize_header([out_table_name])[0]
