@@ -88,14 +88,19 @@ class Component(ComponentBase):
 
     def fetch_data(self, client, dimensions, metrics, date_ranges, currency):
         temp = tempfile.NamedTemporaryFile(mode='w+b', suffix='.csv', delete=False)
+        first_file = True
         for date_range in date_ranges:
             logging.info(f"Downloading report chunk from {date_range[0]} to {date_range[1]}")
             response = self._fetch_report(client, dimensions, metrics, date_range[0], date_range[1], currency)
+            if not first_file:
+                header_index = response.find('\n')
+                response = response[header_index+1:]
             row_count = response.count("\n")
             if row_count >= API_ROW_LIMIT:
                 raise UserException("Fetching of data failed, please create a smaller date range for the report")
             with open(temp.name, 'a', encoding='utf-8') as out:
                 out.write(response)
+            first_file = False
         return temp
 
     @staticmethod
@@ -154,11 +159,14 @@ class Component(ComponentBase):
         delta = timedelta(days=day_delay)
         currentdate = startdate
         todate = startdate
-        while currentdate + delta < enddate:
-            todate = currentdate + delta
-            yield str(currentdate), str(todate)
-            currentdate += delta + timedelta(days=1)
-        yield str(todate + timedelta(days=1)), str(enddate)
+        if currentdate + delta < enddate:
+            while currentdate + delta < enddate:
+                todate = currentdate + delta
+                yield str(currentdate), str(todate)
+                currentdate += delta + timedelta(days=1)
+            yield str(currentdate), str(enddate)
+        else:
+            yield str(startdate), str(enddate)
 
     @staticmethod
     def get_last_week_dates():
