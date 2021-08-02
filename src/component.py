@@ -119,12 +119,17 @@ class Component(ComponentBase):
                     raise UserException(
                         f"Invalid query: {errors[0]['title']},"
                         f" {errors[0]['detail']}") from api_exception
-                else:
+                elif errors[0]["title"] == "Request body is required.":
                     raise UserException(
                         f"List of dimensions in configuration contains an invalid dimension, "
                         f"please recheck your configuration and valid dimensions :"
                         f" https://developers.criteo.com/marketing-solutions/docs/dimensions"
                         f" Your set dimensions : {dimensions}"
+                        f"\nError data from Criteo {api_exception.body}") from api_exception
+                elif errors[0]["title"] == "At least one advertiser id must be provided.":
+                    raise UserException(
+                        f"The extractor could not fetch data from the api, please check that your developer app"
+                        f" has consented to read data from at least one advertiser"
                         f"\nError data from Criteo {api_exception.body}") from api_exception
         except ApiDataException as data_exception:
             raise UserException(f"API exception code {data_exception}")
