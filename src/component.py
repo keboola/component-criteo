@@ -94,7 +94,7 @@ class Component(ComponentBase):
             response = self._fetch_report(client, dimensions, metrics, date_range[0], date_range[1], currency)
             if not first_file:
                 header_index = response.find('\n')
-                response = response[header_index+1:]
+                response = response[header_index + 1:]
             row_count = response.count("\n")
             if row_count >= API_ROW_LIMIT:
                 raise UserException("Fetching of data failed, please create a smaller date range for the report")
@@ -120,7 +120,12 @@ class Component(ComponentBase):
                         f"Invalid query: {errors[0]['title']},"
                         f" {errors[0]['detail']}") from api_exception
                 else:
-                    raise UserException("Invalid dimensions, please recheck your configuration") from api_exception
+                    raise UserException(
+                        f"List of dimensions in configuration contains an invalid dimension, "
+                        f"please recheck your configuration and valid dimensions :"
+                        f" https://developers.criteo.com/marketing-solutions/docs/dimensions"
+                        f" Your set dimensions : {dimensions}"
+                        f"\nError data from Criteo {api_exception.body}") from api_exception
         except ApiDataException as data_exception:
             raise UserException(f"API exception code {data_exception}")
 
