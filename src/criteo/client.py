@@ -1,6 +1,9 @@
 from __future__ import print_function
 import criteo_marketing_transition as cm
 from criteo_marketing_transition import Configuration
+from criteo_marketing_transition.api_client import ApiClient
+from datetime import date
+from typing import List
 
 # There is only one accepted GRANT_TYPE
 GRANT_TYPE = 'client_credentials'
@@ -11,11 +14,17 @@ class ApiDataException(Exception):
 
 
 class CriteoClient:
-    def __init__(self, username, password):
-        configuration = Configuration(username=username, password=password)
-        self.client = cm.ApiClient(configuration)
+    def __init__(self, client: ApiClient) -> None:
+        self.client = client
 
-    def get_report(self, dimensions, metrics, date_from, date_to, currency):
+    @classmethod
+    def login(cls, username: str, password: str):
+        configuration = Configuration(username=username, password=password)
+        client = cm.ApiClient(configuration)
+        return cls(client=client)
+
+    def get_report(self, dimensions: List[str], metrics: List[str], date_from: date, date_to: date,
+                   currency: str) -> str:
         analytics_api = cm.AnalyticsApi(self.client)
         stats_query_message = cm.StatisticsReportQueryMessage(
             dimensions=dimensions,

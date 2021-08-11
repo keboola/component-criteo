@@ -3,13 +3,15 @@ import tempfile
 import logging
 import dateparser
 import json
-from criteo.client import CriteoClient, ApiDataException
+from criteo import CriteoClient, ApiDataException
 from datetime import date
 from datetime import timedelta
 from keboola.utils.header_normalizer import get_normalizer, NormalizerStrategy
 from criteo_marketing_transition.rest import ApiException
-
 from keboola.component.base import ComponentBase, UserException
+from typing import List
+from typing import Iterator
+from typing import Tuple
 
 KEY_CLIENT_ID = '#client_id'
 KEY_CLIENT_SECRET = '#client_secret'
@@ -34,25 +36,24 @@ REQUIRED_IMAGE_PARS = []
 
 class Component(ComponentBase):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(required_parameters=REQUIRED_PARAMETERS,
                          required_image_parameters=REQUIRED_IMAGE_PARS)
 
-    def run(self):
+    def run(self) -> None:
         params = self.configuration.parameters
 
         client_id = params.get(KEY_CLIENT_ID)
         client_secret = params.get(KEY_CLIENT_SECRET)
 
-        client = CriteoClient(client_id, client_secret)
+        client = CriteoClient.login(client_id, client_secret)
 
         loading_options = params.get(KEY_LOADING_OPTIONS)
         incremental = loading_options.get(KEY_LOADING_OPTIONS_INCREMENTAL)
         pkey = loading_options.get(KEY_LOADING_OPTIONS_PKEY, [])
 
-        if incremental:
-            if not pkey:
-                raise UserException("A primary key must be set for incremental loading")
+        if incremental and not pkey:
+            raise UserException("A primary key must be set for incremental loading")
 
         metrics = params.get(KEY_METRICS)
         metrics = self.parse_list_from_string(metrics)
@@ -67,6 +68,9 @@ class Component(ComponentBase):
         date_range = params.get(KEY_DATE_RANGE)
         date_from, date_to = self.get_date_range(date_from, date_to, date_range)
 
+        # due to there being a row limit 0f 100k rows, but no automatic pagination; you have to specify a
+        # date range which has less than 100k rows. Since the amount of data is not fixed over a period of time
+        # you must estimate a safe date range to get data for
         day_delay = self.estimate_day_delay(client, dimensions, metrics, date_to, currency)
         date_ranges = self.split_date_range(date_from, date_to, day_delay)
         out_table_name = params.get(KEY_OUT_TABLE_NAME)
@@ -86,7 +90,8 @@ class Component(ComponentBase):
         table.columns = header_normalizer.normalize_header(fieldnames)
         self.write_tabledef_manifest(table)
 
-    def fetch_data(self, client, dimensions, metrics, date_ranges, currency):
+    def fetch_data(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_ranges: Iterator,
+                   currency: str) -> tempfile.NamedTemporaryFile:
         temp = tempfile.NamedTemporaryFile(mode='w+b', suffix='.csv', delete=False)
         first_file = True
         for date_range in date_ranges:
@@ -104,7 +109,8 @@ class Component(ComponentBase):
         return temp
 
     @staticmethod
-    def _fetch_report(client, dimensions, metrics, date_from, date_to, currency):
+    def _fetch_report(client: CriteoClient, dimensions: List[str], metrics: List[str], date_from: date,
+                      date_to: date, currency: str) -> str:
         try:
             return client.get_report(dimensions, metrics, date_from, date_to, currency)
         except ApiException as api_exception:
@@ -135,10 +141,10 @@ class Component(ComponentBase):
             raise UserException(f"API exception code {data_exception}")
 
     @staticmethod
-    def write_from_temp_to_table(temp_file_path, table_path, delimiter):
+    def write_from_temp_to_table(temp_file_path: str, table_path: str, delimiter: str) -> List[str]:
         with open(temp_file_path, mode='r', encoding='utf-8') as in_file:
             reader = csv.DictReader(in_file, delimiter=delimiter)
-            fieldnames = reader.fieldnames
+            fieldnames = reader.fieldnames if reader.fieldnames else []
             with open(table_path, mode='wt', encoding='utf-8', newline='') as out_file:
                 writer = csv.DictWriter(out_file, reader.fieldnames)
                 for row in reader:
@@ -146,12 +152,12 @@ class Component(ComponentBase):
         return fieldnames
 
     @staticmethod
-    def parse_list_from_string(string_list):
-        list = string_list.split(",")
-        list = [word.strip() for word in list]
-        return list
+    def parse_list_from_string(string_list: str) -> List[str]:
+        list_of_strings = string_list.split(",")
+        list_of_strings = [word.strip() for word in list_of_strings]
+        return list_of_strings
 
-    def get_date_range(self, date_from, date_to, date_range):
+    def get_date_range(self, date_from: str, date_to: str, date_range: str) -> Tuple[date, date]:
         if date_range == "Last week (sun-sat)":
             date_from, date_to = self.get_last_week_dates()
         elif date_range == "Last month":
@@ -165,18 +171,17 @@ class Component(ComponentBase):
         return date_from, date_to
 
     @staticmethod
-    def split_date_range(startdate, enddate, day_delay):
+    def split_date_range(start_date: date, end_date: date, day_delay: int) -> Iterator:
         delta = timedelta(days=day_delay)
-        currentdate = startdate
-        todate = startdate
-        if currentdate + delta < enddate:
-            while currentdate + delta < enddate:
-                todate = currentdate + delta
-                yield str(currentdate), str(todate)
-                currentdate += delta + timedelta(days=1)
-            yield str(currentdate), str(enddate)
+        current_date = start_date
+        if current_date + delta < end_date:
+            while current_date + delta < end_date:
+                todate = current_date + delta
+                yield str(current_date), str(todate)
+                current_date += delta + timedelta(days=1)
+            yield str(current_date), str(end_date)
         else:
-            yield str(startdate), str(enddate)
+            yield str(start_date), str(end_date)
 
     @staticmethod
     def get_last_week_dates():
@@ -186,17 +191,23 @@ class Component(ComponentBase):
         last_week_sunday = last_week_saturday - timedelta(days=6)
         return last_week_sunday, last_week_saturday
 
-    def get_last_month_dates(self):
+    @staticmethod
+    def get_last_month_dates():
         last_day_of_prev_month = date.today().replace(day=1) - timedelta(days=1)
         start_day_of_prev_month = date.today().replace(day=1) - timedelta(days=last_day_of_prev_month.day)
         return start_day_of_prev_month, last_day_of_prev_month
 
-    def estimate_day_delay(self, client, dimensions, metrics, date_to, currency):
+    def estimate_day_delay(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_to: date,
+                           currency: str) -> int:
+        """
+        Returns the amount of days it is safe to fetch data for
+        """
         date_to = date_to - timedelta(days=1)
         date_from = date_to - timedelta(days=30)
         rows_per_day = self._fetch_report(client, dimensions, metrics, date_from, date_to, currency).count("\n") / 31
 
-        # report range is maximum amount of days to get 50% of the api row limit size
+        # report range is maximum amount of days to get 25% of the api row limit size to be safe as data amount
+        # over time can fluctuate
         report_range = int((API_ROW_LIMIT * 0.25) / rows_per_day)
         return report_range
 
