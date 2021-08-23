@@ -83,6 +83,7 @@ class Component(ComponentBase):
 
         header_normalizer = get_normalizer(NormalizerStrategy.DEFAULT)
         out_table_name = header_normalizer.normalize_header([out_table_name])[0]
+        # TODO: use table.delimiter = ";"
         table = self.create_out_table_definition(name=out_table_name, incremental=incremental, primary_key=pkey)
 
         fieldnames = self.write_from_temp_to_table(temp_file.name, table.full_path, ";")
@@ -92,6 +93,11 @@ class Component(ComponentBase):
 
     def fetch_data(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_ranges: Iterator,
                    currency: str) -> tempfile.NamedTemporaryFile:
+        # TODO: Just note that if it's multiple files it can be also processed as sliced tables.
+        # the storage load can be much faster for large imports if the large file is split into
+        # smaller chunks(~<100MB). To do that just store header-less files in a folder
+        # e.g. table.full_path = folder.
+        # this could also write directly to the final destination out/tables
         temp = tempfile.NamedTemporaryFile(mode='w+b', suffix='.csv', delete=False)
         first_file = True
         for date_range in date_ranges:
@@ -142,6 +148,14 @@ class Component(ComponentBase):
 
     @staticmethod
     def write_from_temp_to_table(temp_file_path: str, table_path: str, delimiter: str) -> List[str]:
+        # TODO: this is quite inefficient. There is no need to iterate through the file again. Can be removed.
+        # it is already processed in fetch_data method. The delimiter can be set in the manifest
+        # out_table_def.delimiter = ';' (it's just missing in the create_out_table method.)
+        # The fieldnames can be retrieved in the fetch_data method as well.
+        # In case you need to remove first line it can be done like this:
+        # https://bitbucket.org/kds_consulting_team/kds-team.ex-shoptet-permalink/src/85dfabb662a47f15fbadcabab893d2ebe0ec9d44/src/component.py#lines-151
+        # But here it's not needed because the fetch_data processes data and skips header
+
         with open(temp_file_path, mode='r', encoding='utf-8') as in_file:
             reader = csv.DictReader(in_file, delimiter=delimiter)
             fieldnames = reader.fieldnames if reader.fieldnames else []
@@ -153,6 +167,7 @@ class Component(ComponentBase):
 
     @staticmethod
     def parse_list_from_string(string_list: str) -> List[str]:
+        # TODO: note that there's keboola.utils.helpers.comma_separated_values_to_list doing the same thing
         list_of_strings = string_list.split(",")
         list_of_strings = [word.strip() for word in list_of_strings]
         return list_of_strings
@@ -172,6 +187,7 @@ class Component(ComponentBase):
 
     @staticmethod
     def split_date_range(start_date: date, end_date: date, day_delay: int) -> Iterator:
+        # TODO: just note there's keboola.utils.date.split_dates_to_chunks doing just this
         delta = timedelta(days=day_delay)
         current_date = start_date
         if current_date + delta < end_date:
