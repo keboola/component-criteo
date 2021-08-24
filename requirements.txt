@@ -5,3 +5,4 @@ mock
 freezegun
 criteo_marketing_transition
 retry
+dateparser

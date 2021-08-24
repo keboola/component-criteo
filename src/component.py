@@ -1,8 +1,7 @@
-import csv
-import tempfile
 import logging
 import dateparser
 import json
+from os import path, mkdir
 from criteo import CriteoClient, ApiDataException
 from datetime import date
 from datetime import timedelta
@@ -75,38 +74,44 @@ class Component(ComponentBase):
         date_ranges = self.split_date_range(date_from, date_to, day_delay)
         out_table_name = params.get(KEY_OUT_TABLE_NAME)
 
+        header_normalizer = get_normalizer(NormalizerStrategy.DEFAULT)
+        out_table_name = header_normalizer.normalize_header([out_table_name])[0]
+        table = self.create_out_table_definition(name=out_table_name, incremental=incremental, primary_key=pkey,
+                                                 is_sliced=True)
+        table.delimiter = ";"
+        self.create_sliced_directory(table.full_path)
+
         logging.info(
             f"Fetching report data for dimensions : {dimensions}, metrics : {metrics}, from {date_from} to "
             f"{date_to}, with currency : {currency}")
-        temp_file = self.fetch_data(client, dimensions, metrics, date_ranges, currency)
+        fieldnames = self.fetch_data_and_write(client, dimensions, metrics, date_ranges, currency, table.full_path)
         logging.info("Parsing downloaded results")
-
-        header_normalizer = get_normalizer(NormalizerStrategy.DEFAULT)
-        out_table_name = header_normalizer.normalize_header([out_table_name])[0]
-        table = self.create_out_table_definition(name=out_table_name, incremental=incremental, primary_key=pkey)
-
-        fieldnames = self.write_from_temp_to_table(temp_file.name, table.full_path, ";")
         header_normalizer = get_normalizer(NormalizerStrategy.DEFAULT)
         table.columns = header_normalizer.normalize_header(fieldnames)
         self.write_tabledef_manifest(table)
 
-    def fetch_data(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_ranges: Iterator,
-                   currency: str) -> tempfile.NamedTemporaryFile:
-        temp = tempfile.NamedTemporaryFile(mode='w+b', suffix='.csv', delete=False)
-        first_file = True
-        for date_range in date_ranges:
+    @staticmethod
+    def create_sliced_directory(table_path):
+        logging.info("Creating sliced file")
+        if not path.isdir(table_path):
+            mkdir(table_path)
+
+    def fetch_data_and_write(self, client: CriteoClient, dimensions: List[str], metrics: List[str],
+                             date_ranges: Iterator, currency: str, out_table_path: str) -> List[str]:
+        fieldnames = []
+        for i, date_range in enumerate(date_ranges):
+            slice_path = path.join(out_table_path, str(i))
             logging.info(f"Downloading report chunk from {date_range[0]} to {date_range[1]}")
             response = self._fetch_report(client, dimensions, metrics, date_range[0], date_range[1], currency)
-            if not first_file:
-                header_index = response.find('\n')
-                response = response[header_index + 1:]
+            last_header_index = response.find('\n')
+            header_string = response[0:last_header_index].strip()
+            fieldnames = self.parse_list_from_string(header_string, delimeter=";")
             row_count = response.count("\n")
             if row_count >= API_ROW_LIMIT:
                 raise UserException("Fetching of data failed, please create a smaller date range for the report")
-            with open(temp.name, 'a', encoding='utf-8') as out:
-                out.write(response)
-            first_file = False
-        return temp
+            with open(slice_path, 'w', encoding='utf-8') as out:
+                out.write(response[last_header_index + 1:])
+        return fieldnames
 
     @staticmethod
     def _fetch_report(client: CriteoClient, dimensions: List[str], metrics: List[str], date_from: date,
@@ -141,19 +146,8 @@ class Component(ComponentBase):
             raise UserException(f"API exception code {data_exception}")
 
     @staticmethod
-    def write_from_temp_to_table(temp_file_path: str, table_path: str, delimiter: str) -> List[str]:
-        with open(temp_file_path, mode='r', encoding='utf-8') as in_file:
-            reader = csv.DictReader(in_file, delimiter=delimiter)
-            fieldnames = reader.fieldnames if reader.fieldnames else []
-            with open(table_path, mode='wt', encoding='utf-8', newline='') as out_file:
-                writer = csv.DictWriter(out_file, reader.fieldnames)
-                for row in reader:
-                    writer.writerow(row)
-        return fieldnames
-
-    @staticmethod
-    def parse_list_from_string(string_list: str) -> List[str]:
-        list_of_strings = string_list.split(",")
+    def parse_list_from_string(string_list: str, delimeter: str = ",") -> List[str]:
+        list_of_strings = string_list.split(delimeter)
         list_of_strings = [word.strip() for word in list_of_strings]
         return list_of_strings
 
