@@ -106,7 +106,9 @@ class Component(ComponentBase):
             last_header_index = response.find('\n')
             header_string = response[0:last_header_index].strip()
             fieldnames = self.parse_list_from_string(header_string, delimeter=";")
-            row_count = response.count("\n")
+            row_count = 0
+            if response:
+                row_count = response.count("\n")
             if row_count >= API_ROW_LIMIT:
                 raise UserException("Fetching of data failed, please create a smaller date range for the report")
             with open(slice_path, 'w', encoding='utf-8') as out:
@@ -198,7 +200,10 @@ class Component(ComponentBase):
         """
         date_to = date_to - timedelta(days=1)
         date_from = date_to - timedelta(days=30)
-        rows_per_day = self._fetch_report(client, dimensions, metrics, date_from, date_to, currency).count("\n") / 31
+        rows_per_day = API_ROW_LIMIT
+        sample_report = self._fetch_report(client, dimensions, metrics, date_from, date_to, currency)
+        if sample_report:
+            rows_per_day = sample_report.count("\n") / 31
 
         # report range is maximum amount of days to get 25% of the api row limit size to be safe as data amount
         # over time can fluctuate
