@@ -3,6 +3,6 @@ keboola.utils
 keboola.http-client
 mock
 freezegun
-criteo_marketing_transition
+criteo-api-marketingsolutions-sdk
 retry
 dateparser
