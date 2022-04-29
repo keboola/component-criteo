@@ -211,6 +211,9 @@ class Component(ComponentBase):
         # report range is maximum amount of days to get 25% of the api row limit size to be safe as data amount
         # over time can fluctuate
         report_range = int((API_ROW_LIMIT * 0.25) / rows_per_day)
+
+        # Max report length should be 100 days
+        report_range = min(100, report_range)
         return report_range
 
 
