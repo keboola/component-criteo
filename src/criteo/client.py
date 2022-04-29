@@ -1,15 +1,19 @@
 from __future__ import print_function
-import criteo_marketing_transition as cm
-from criteo_marketing_transition import Configuration
-from criteo_marketing_transition.api_client import ApiClient
-from datetime import date
+import criteo_api_marketingsolutions_v2022_04 as cm
+from criteo_api_marketingsolutions_v2022_04 import Configuration
+from criteo_api_marketingsolutions_v2022_04.api_client import ApiClient
+from criteo_api_marketingsolutions_v2022_04.api import analytics_api
+from criteo_api_marketingsolutions_v2022_04.model.statistics_report_query_message import StatisticsReportQueryMessage
+from criteo_api_marketingsolutions_v2022_04.exceptions import ApiValueError
+from datetime import datetime
 from typing import List
+from criteo_api_marketingsolutions_v2022_04.rest import ApiException
 
 # There is only one accepted GRANT_TYPE
 GRANT_TYPE = 'client_credentials'
 
 
-class ApiDataException(Exception):
+class CriteoClientException(Exception):
     pass
 
 
@@ -23,22 +27,23 @@ class CriteoClient:
         client = cm.ApiClient(configuration)
         return cls(client=client)
 
-    def get_report(self, dimensions: List[str], metrics: List[str], date_from: date, date_to: date,
+    def get_report(self, dimensions: List[str], metrics: List[str], date_from: datetime, date_to: datetime,
                    currency: str) -> str:
-        analytics_api = cm.AnalyticsApi(self.client)
-        stats_query_message = cm.StatisticsReportQueryMessage(
-            dimensions=dimensions,
-            metrics=metrics,
-            start_date=date_from,
-            end_date=date_to,
-            currency=currency,
-            format="CSV")
+        api_instance = analytics_api.AnalyticsApi(self.client)
+        try:
+            statistics_report_query_message = StatisticsReportQueryMessage(
+                dimensions=dimensions,
+                metrics=metrics,
+                start_date=date_from,
+                end_date=date_to,
+                currency=currency,
+                format="CSV")
+        except ApiValueError as api_exc:
+            raise CriteoClientException(api_exc) from api_exc
 
-        [response_content, http_code, response_headers] = analytics_api.get_adset_report_with_http_info(
-            statistics_report_query_message=stats_query_message)
-        if 200 == http_code:
-            content_disposition = response_headers["Content-Disposition"]
-            if content_disposition:
-                return response_content
-        else:
-            raise ApiDataException(str(http_code))
+        try:
+            api_response = api_instance.get_adset_report(
+                statistics_report_query_message=statistics_report_query_message)
+            return api_response
+        except ApiException as api_exc:
+            raise CriteoClientException(api_exc) from api_exc

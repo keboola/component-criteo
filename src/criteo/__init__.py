@@ -1,1 +1,1 @@
-from .client import CriteoClient, ApiDataException  # noqa
+from .client import CriteoClient, CriteoClientException  # noqa

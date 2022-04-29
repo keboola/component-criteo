@@ -1,16 +1,13 @@
 import logging
 import dateparser
 import json
+from json.decoder import JSONDecodeError
 from os import path, mkdir
-from criteo import CriteoClient, ApiDataException
-from datetime import date
-from datetime import timedelta
+from criteo import CriteoClient, CriteoClientException
+from datetime import datetime, timedelta
 from keboola.utils.header_normalizer import get_normalizer, NormalizerStrategy
-from criteo_marketing_transition.rest import ApiException
 from keboola.component.base import ComponentBase, UserException
-from typing import List
-from typing import Iterator
-from typing import Tuple
+from typing import List, Iterator, Tuple
 
 KEY_CLIENT_ID = '#client_id'
 KEY_CLIENT_SECRET = '#client_secret'
@@ -28,9 +25,9 @@ KEY_LOADING_OPTIONS_PKEY = "pkey"
 
 API_ROW_LIMIT = 100000
 
-REQUIRED_PARAMETERS = [KEY_CLIENT_ID, KEY_CLIENT_SECRET, KEY_DATE_RANGE, KEY_OUT_TABLE_NAME, KEY_METRICS,
-                       KEY_DIMENSIONS]
-REQUIRED_IMAGE_PARS = []
+REQUIRED_PARAMETERS: List = [KEY_CLIENT_ID, KEY_CLIENT_SECRET, KEY_DATE_RANGE, KEY_OUT_TABLE_NAME, KEY_METRICS,
+                             KEY_DIMENSIONS]
+REQUIRED_IMAGE_PARS: List = []
 
 
 class Component(ComponentBase):
@@ -91,7 +88,7 @@ class Component(ComponentBase):
         self.write_tabledef_manifest(table)
 
     @staticmethod
-    def create_sliced_directory(table_path):
+    def create_sliced_directory(table_path: str):
         logging.info("Creating sliced file")
         if not path.isdir(table_path):
             mkdir(table_path)
@@ -115,37 +112,38 @@ class Component(ComponentBase):
                 out.write(response[last_header_index + 1:])
         return fieldnames
 
-    @staticmethod
-    def _fetch_report(client: CriteoClient, dimensions: List[str], metrics: List[str], date_from: date,
-                      date_to: date, currency: str) -> str:
+    def _fetch_report(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_from: datetime,
+                      date_to: datetime, currency: str) -> str:
         try:
             return client.get_report(dimensions, metrics, date_from, date_to, currency)
-        except ApiException as api_exception:
-            if "error" in api_exception.body and isinstance(api_exception.body, dict):
-                error_type = api_exception.body["error"]
-                if error_type == 'credentials_no_longer_supported' or error_type == "invalid_client":
-                    raise UserException(
-                        "Incorrect credentials, please recheck your authorization settings") from api_exception
-            elif "errors" in api_exception.body:
-                errors = json.loads(api_exception.body)["errors"]
-                if 'detail' in errors[0]:
-                    raise UserException(
-                        f"Invalid query: {errors[0]['title']},"
-                        f" {errors[0]['detail']}") from api_exception
-                elif errors[0]["title"] == "Request body is required.":
-                    raise UserException(
-                        f"List of dimensions in configuration contains an invalid dimension, "
-                        f"please recheck your configuration and valid dimensions :"
-                        f" https://developers.criteo.com/marketing-solutions/docs/dimensions"
-                        f" Your set dimensions : {dimensions}"
-                        f"\nError data from Criteo {api_exception.body}") from api_exception
-                elif errors[0]["title"] == "At least one advertiser id must be provided.":
-                    raise UserException(
-                        f"The extractor could not fetch data from the api, please check that your developer app"
-                        f" has consented to read data from at least one advertiser"
-                        f"\nError data from Criteo {api_exception.body}") from api_exception
-        except ApiDataException as data_exception:
-            raise UserException(f"API exception code {data_exception}")
+        except CriteoClientException as criteo_exc:
+            error_text = self.parse_error(criteo_exc)
+            raise UserException(error_text) from criteo_exc
+
+    @staticmethod
+    def parse_error(exception: CriteoClientException) -> str:
+        try:
+            error = exception.args[0].body
+        except AttributeError:
+            try:
+                error = exception.args[0].args[0]
+                return error
+            except IndexError as indx_err:
+                raise UserException(f"Failed to parse exception {CriteoClientException}") from indx_err
+
+        if isinstance(error, bytes):
+            try:
+                error = json.loads(error.decode('utf-8'))
+            except JSONDecodeError as json_decode_err:
+                raise UserException(f"Failed to parse exception {CriteoClientException}") from json_decode_err
+
+        if "errors" in error and len(error.get("errors", [])) > 0:
+            error_text = f"Failed to fetch data : {error.get('errors')[0].get('code')} : " \
+                         f"{error.get('errors')[0].get('detail')}"
+            return error_text
+
+        error_text = f"Failed to fetch data : {error.get('error')} : {error.get('error_description')}"
+        return error_text
 
     @staticmethod
     def parse_list_from_string(string_list: str, delimeter: str = ",") -> List[str]:
@@ -153,47 +151,52 @@ class Component(ComponentBase):
         list_of_strings = [word.strip() for word in list_of_strings]
         return list_of_strings
 
-    def get_date_range(self, date_from: str, date_to: str, date_range: str) -> Tuple[date, date]:
+    def get_date_range(self, date_from_str: str, date_to_str: str, date_range: str) -> Tuple[datetime, datetime]:
         if date_range == "Last week (sun-sat)":
             date_from, date_to = self.get_last_week_dates()
         elif date_range == "Last month":
             date_from, date_to = self.get_last_month_dates()
         elif date_range == "Custom":
             try:
-                date_from = dateparser.parse(date_from).date()
-                date_to = dateparser.parse(date_to).date()
+                date_from = dateparser.parse(date_from_str).date()
+                date_from = datetime.combine(date_from, datetime.min.time())
+                date_to = dateparser.parse(date_to_str).date()
+                date_to = datetime.combine(date_to, datetime.min.time())
             except AttributeError:
                 raise UserException("Invalid custom date, please check documentation for valid inputs")
+        else:
+            raise UserException(f"Invalid date range type {date_range}. Must be in : \'Last week (sun-sat)\'"
+                                f",\'Last month\', \'Custom\'")
         return date_from, date_to
 
     @staticmethod
-    def split_date_range(start_date: date, end_date: date, day_delay: int) -> Iterator:
+    def split_date_range(start_date: datetime, end_date: datetime, day_delay: int) -> Iterator:
         delta = timedelta(days=day_delay)
         current_date = start_date
         if current_date + delta < end_date:
             while current_date + delta < end_date:
                 todate = current_date + delta
-                yield str(current_date), str(todate)
+                yield current_date, todate
                 current_date += delta + timedelta(days=1)
-            yield str(current_date), str(end_date)
+            yield current_date, end_date
         else:
-            yield str(start_date), str(end_date)
+            yield start_date, end_date
 
     @staticmethod
-    def get_last_week_dates():
-        today = date.today()
+    def get_last_week_dates() -> Tuple[datetime, datetime]:
+        today = datetime.today()
         offset = (today.weekday() - 5) % 7
         last_week_saturday = today - timedelta(days=offset)
         last_week_sunday = last_week_saturday - timedelta(days=6)
         return last_week_sunday, last_week_saturday
 
     @staticmethod
-    def get_last_month_dates():
-        last_day_of_prev_month = date.today().replace(day=1) - timedelta(days=1)
-        start_day_of_prev_month = date.today().replace(day=1) - timedelta(days=last_day_of_prev_month.day)
+    def get_last_month_dates() -> Tuple[datetime, datetime]:
+        last_day_of_prev_month = datetime.today().replace(day=1) - timedelta(days=1)
+        start_day_of_prev_month = datetime.today().replace(day=1) - timedelta(days=last_day_of_prev_month.day)
         return start_day_of_prev_month, last_day_of_prev_month
 
-    def estimate_day_delay(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_to: date,
+    def estimate_day_delay(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_to: datetime,
                            currency: str) -> int:
         """
         Returns the amount of days it is safe to fetch data for
@@ -203,11 +206,14 @@ class Component(ComponentBase):
         rows_per_day = API_ROW_LIMIT
         sample_report = self._fetch_report(client, dimensions, metrics, date_from, date_to, currency)
         if sample_report:
-            rows_per_day = sample_report.count("\n") / 31
+            rows_per_day = int(sample_report.count("\n") / 31)
 
         # report range is maximum amount of days to get 25% of the api row limit size to be safe as data amount
         # over time can fluctuate
         report_range = int((API_ROW_LIMIT * 0.25) / rows_per_day)
+
+        # Max report length should be 100 days
+        report_range = min(100, report_range)
         return report_range
 
 
