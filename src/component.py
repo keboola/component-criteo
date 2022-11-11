@@ -213,9 +213,7 @@ class Component(ComponentBase):
         try:
             report_range = int((API_ROW_LIMIT * 0.25) / rows_per_day)
         except ZeroDivisionError as e:
-            raise UserException(f"Failed getting report range: "
-                                f"API_ROW_LIMIT: {API_ROW_LIMIT}\n"
-                                f"rows_per_day: {rows_per_day}") from e
+            raise UserException(f"The query result has zero items: {e}") from e
 
         # Max report length should be 100 days
         report_range = min(100, report_range)
