@@ -25,9 +25,9 @@ KEY_LOADING_OPTIONS_PKEY = "pkey"
 
 API_ROW_LIMIT = 100000
 
-REQUIRED_PARAMETERS: List = [KEY_CLIENT_ID, KEY_CLIENT_SECRET, KEY_DATE_RANGE, KEY_OUT_TABLE_NAME, KEY_METRICS,
-                             KEY_DIMENSIONS]
-REQUIRED_IMAGE_PARS: List = []
+REQUIRED_PARAMETERS = [KEY_CLIENT_ID, KEY_CLIENT_SECRET, KEY_DATE_RANGE, KEY_OUT_TABLE_NAME, KEY_METRICS,
+                       KEY_DIMENSIONS]
+REQUIRED_IMAGE_PARS = []
 
 
 class Component(ComponentBase):
@@ -210,7 +210,12 @@ class Component(ComponentBase):
 
         # report range is maximum amount of days to get 25% of the api row limit size to be safe as data amount
         # over time can fluctuate
-        report_range = int((API_ROW_LIMIT * 0.25) / rows_per_day)
+        try:
+            report_range = int((API_ROW_LIMIT * 0.25) / rows_per_day)
+        except:
+            raise UserException(f"Failed getting report range: "
+                                f"API_ROW_LIMIT: {API_ROW_LIMIT}\n"
+                                f"rows_per_day: {rows_per_day}")
 
         # Max report length should be 100 days
         report_range = min(100, report_range)
