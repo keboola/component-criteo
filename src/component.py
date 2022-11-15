@@ -210,7 +210,7 @@ class Component(ComponentBase):
         if sample_report:
             sample_report_len = int(sample_report.count("\n"))
             if sample_report_len == 0:
-                raise UserException(f"The sample report result is empty.")
+                raise UserException("The sample report result is empty.")
             rows_per_day = int(sample_report_len/31)
 
         # report range is maximum amount of days to get 25% of the api row limit size to be safe as data amount
