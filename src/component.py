@@ -206,14 +206,17 @@ class Component(ComponentBase):
         rows_per_day = API_ROW_LIMIT
         sample_report = self._fetch_report(client, dimensions, metrics, date_from, date_to, currency)
         if sample_report:
-            rows_per_day = int(sample_report.count("\n") / 31)
+            sample_report_len = int(sample_report.count("\n"))
+            if sample_report_len == 0:
+                raise UserException(f"The sample report result is empty.")
+            rows_per_day = int(sample_report_len/31)
 
         # report range is maximum amount of days to get 25% of the api row limit size to be safe as data amount
         # over time can fluctuate
-        try:
+        if rows_per_day > 1:
             report_range = int((API_ROW_LIMIT * 0.25) / rows_per_day)
-        except ZeroDivisionError as e:
-            raise UserException(f"The query result has zero items: {e}") from e
+        else:
+            report_range = 100
 
         # Max report length should be 100 days
         report_range = min(100, report_range)
