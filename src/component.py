@@ -25,9 +25,9 @@ KEY_LOADING_OPTIONS_PKEY = "pkey"
 
 API_ROW_LIMIT = 100000
 
-REQUIRED_PARAMETERS: List = [KEY_CLIENT_ID, KEY_CLIENT_SECRET, KEY_DATE_RANGE, KEY_OUT_TABLE_NAME, KEY_METRICS,
-                             KEY_DIMENSIONS]
-REQUIRED_IMAGE_PARS: List = []
+REQUIRED_PARAMETERS = [KEY_CLIENT_ID, KEY_CLIENT_SECRET, KEY_DATE_RANGE, KEY_OUT_TABLE_NAME, KEY_METRICS,
+                       KEY_DIMENSIONS]
+REQUIRED_IMAGE_PARS = []
 
 
 class Component(ComponentBase):
@@ -199,18 +199,27 @@ class Component(ComponentBase):
     def estimate_day_delay(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_to: datetime,
                            currency: str) -> int:
         """
-        Returns the amount of days it is safe to fetch data for
+        Returns the amount of days it is safe to fetch data for.
+        In case when query returns zero results, returns UserException.
+        When there is not more than one row for a day, sets to range to maximum limit (100).
         """
         date_to = date_to - timedelta(days=1)
         date_from = date_to - timedelta(days=30)
         rows_per_day = API_ROW_LIMIT
         sample_report = self._fetch_report(client, dimensions, metrics, date_from, date_to, currency)
         if sample_report:
-            rows_per_day = int(sample_report.count("\n") / 31)
+            sample_report_len = int(sample_report.count("\n"))
+            if sample_report_len == 0:
+                rows_per_day = 0
+            else:
+                rows_per_day = int(sample_report_len/31)
 
         # report range is maximum amount of days to get 25% of the api row limit size to be safe as data amount
         # over time can fluctuate
-        report_range = int((API_ROW_LIMIT * 0.25) / rows_per_day)
+        if rows_per_day > 1:
+            report_range = int((API_ROW_LIMIT * 0.25) / rows_per_day)
+        else:
+            report_range = 10  # since it is not possible to estimate the report range we chose a conservative value
 
         # Max report length should be 100 days
         report_range = min(100, report_range)
