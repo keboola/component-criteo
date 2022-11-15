@@ -199,7 +199,9 @@ class Component(ComponentBase):
     def estimate_day_delay(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_to: datetime,
                            currency: str) -> int:
         """
-        Returns the amount of days it is safe to fetch data for
+        Returns the amount of days it is safe to fetch data for.
+        In case when query returns zero results, returns UserException.
+        When there is not more than one row for a day, sets to range to maximum limit (100).
         """
         date_to = date_to - timedelta(days=1)
         date_from = date_to - timedelta(days=30)
