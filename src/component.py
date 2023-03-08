@@ -139,10 +139,11 @@ class Component(ComponentBase):
 
         if "errors" in error and len(error.get("errors", [])) > 0:
             error_text = f"Failed to fetch data : {error.get('errors')[0].get('code')} : " \
-                         f"{error.get('errors')[0].get('detail')}"
+                         f"{error.get('errors')[0].get('detail')}\n Whole error : {error}"
             return error_text
 
-        error_text = f"Failed to fetch data : {error.get('error')} : {error.get('error_description')}"
+        error_text = f"Failed to fetch data : {error.get('error')} : {error.get('error_description')}\n" \
+                     f" Whole error : {error}"
         return error_text
 
     @staticmethod
@@ -212,7 +213,7 @@ class Component(ComponentBase):
             if sample_report_len == 0:
                 rows_per_day = 0
             else:
-                rows_per_day = int(sample_report_len/31)
+                rows_per_day = int(sample_report_len / 31)
 
         # report range is maximum amount of days to get 25% of the api row limit size to be safe as data amount
         # over time can fluctuate
