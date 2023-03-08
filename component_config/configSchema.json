@@ -8,11 +8,13 @@
   "properties": {
     "#client_id": {
       "type": "string",
+      "format" : "password",
       "title": "Client ID",
       "propertyOrder": 1
     },
     "#client_secret": {
       "type": "string",
+      "format" : "password",
       "title": "Client secret",
       "propertyOrder": 2
     }
