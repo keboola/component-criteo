@@ -1,5 +1,6 @@
 import logging
 import dateparser
+import requests
 import json
 from json.decoder import JSONDecodeError
 from os import path, mkdir
@@ -41,8 +42,9 @@ class Component(ComponentBase):
 
         client_id = params.get(KEY_CLIENT_ID)
         client_secret = params.get(KEY_CLIENT_SECRET)
+        access_token = self.get_access_token(client_id, client_secret)
 
-        client = CriteoClient.login(client_id, client_secret)
+        client = CriteoClient.login(access_token)
 
         loading_options = params.get(KEY_LOADING_OPTIONS)
         incremental = loading_options.get(KEY_LOADING_OPTIONS_INCREMENTAL)
@@ -225,6 +227,30 @@ class Component(ComponentBase):
         # Max report length should be 100 days
         report_range = min(100, report_range)
         return report_range
+
+    @staticmethod
+    def get_access_token(client_id, client_secret) -> str:
+        url = "https://api.criteo.com/oauth2/token"
+
+        payload = {
+            "grant_type": "client_credentials",
+            "client_id": client_id,
+            "client_secret": client_secret
+        }
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/x-www-form-urlencoded"
+        }
+
+        response = requests.post(url, data=payload, headers=headers)
+        data = response.json()
+
+        if "error" in data:
+            error = data.get("error")
+            description = data.get("error_description")
+            raise UserException(f"Failed to authenticate using client credentials: {error}, {description}")
+
+        return data.get("access_token")
 
 
 if __name__ == "__main__":

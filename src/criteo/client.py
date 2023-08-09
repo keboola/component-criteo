@@ -22,9 +22,10 @@ class CriteoClient:
         self.client = client
 
     @classmethod
-    def login(cls, username: str, password: str):
-        configuration = Configuration(username=username, password=password)
+    def login(cls, access_token: str):
+        configuration = Configuration(access_token=access_token)
         client = cm.ApiClient(configuration)
+
         return cls(client=client)
 
     def get_report(self, dimensions: List[str], metrics: List[str], date_from: datetime, date_to: datetime,
