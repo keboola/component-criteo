@@ -248,15 +248,13 @@ class Component(ComponentBase):
 
             data = response.json()
 
-            if "error" in data:
-                error = data.get("error")
-                description = data.get("error_description")
-                raise UserException(f"Failed to authenticate using client credentials: {error}, {description}")
-
-            return data.get("access_token")
-
         except requests.exceptions.RequestException as e:
+            if hasattr(e, 'response') and e.response is not None:
+                if e.response.status_code == 401:
+                    raise UserException(f"Failed to authenticate using client credentials.")
             raise UserException(f"Failed to connect to {url}: {e}") from e
+
+        return data.get("access_token")
 
 
 if __name__ == "__main__":
