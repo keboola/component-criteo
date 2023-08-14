@@ -256,7 +256,7 @@ class Component(ComponentBase):
             return data.get("access_token")
 
         except requests.exceptions.RequestException as e:
-            raise UserException(f"Failed to connect to {url}: {e}")
+            raise UserException(f"Failed to connect to {url}: {e}") from e
 
 
 if __name__ == "__main__":
