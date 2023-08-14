@@ -1,5 +1,6 @@
 import logging
 import dateparser
+import requests
 import json
 from json.decoder import JSONDecodeError
 from os import path, mkdir
@@ -41,8 +42,9 @@ class Component(ComponentBase):
 
         client_id = params.get(KEY_CLIENT_ID)
         client_secret = params.get(KEY_CLIENT_SECRET)
+        access_token = self.get_access_token(client_id, client_secret)
 
-        client = CriteoClient.login(client_id, client_secret)
+        client = CriteoClient.login(access_token)
 
         loading_options = params.get(KEY_LOADING_OPTIONS)
         incremental = loading_options.get(KEY_LOADING_OPTIONS_INCREMENTAL)
@@ -225,6 +227,37 @@ class Component(ComponentBase):
         # Max report length should be 100 days
         report_range = min(100, report_range)
         return report_range
+
+    @staticmethod
+    def get_access_token(client_id, client_secret) -> str:
+        url = "https://api.criteo.com/oauth2/token"
+
+        payload = {
+            "grant_type": "client_credentials",
+            "client_id": client_id,
+            "client_secret": client_secret
+        }
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/x-www-form-urlencoded"
+        }
+
+        try:
+            response = requests.post(url, data=payload, headers=headers)
+            response.raise_for_status()
+
+            data = response.json()
+
+        except requests.exceptions.RequestException as e:
+            if hasattr(e, 'response') and e.response is not None:
+                if e.response.status_code == 401:
+                    raise UserException("Failed to authenticate using client credentials.")
+                else:
+                    raise UserException(f"{url} returned an unexpected error during authentication:"
+                                        f" {e.response.status_code}")
+            raise UserException(f"Failed to connect to {url}: {e}") from e
+
+        return data.get("access_token")
 
 
 if __name__ == "__main__":
