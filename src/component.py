@@ -251,7 +251,10 @@ class Component(ComponentBase):
         except requests.exceptions.RequestException as e:
             if hasattr(e, 'response') and e.response is not None:
                 if e.response.status_code == 401:
-                    raise UserException(f"Failed to authenticate using client credentials.")
+                    raise UserException("Failed to authenticate using client credentials.")
+                else:
+                    raise UserException(f"{url} returned an unexpected error during authentication:"
+                                        f" {e.response.status_code}")
             raise UserException(f"Failed to connect to {url}: {e}") from e
 
         return data.get("access_token")
