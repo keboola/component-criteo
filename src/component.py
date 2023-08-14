@@ -242,15 +242,21 @@ class Component(ComponentBase):
             "content-type": "application/x-www-form-urlencoded"
         }
 
-        response = requests.post(url, data=payload, headers=headers)
-        data = response.json()
+        try:
+            response = requests.post(url, data=payload, headers=headers)
+            response.raise_for_status()
 
-        if "error" in data:
-            error = data.get("error")
-            description = data.get("error_description")
-            raise UserException(f"Failed to authenticate using client credentials: {error}, {description}")
+            data = response.json()
 
-        return data.get("access_token")
+            if "error" in data:
+                error = data.get("error")
+                description = data.get("error_description")
+                raise UserException(f"Failed to authenticate using client credentials: {error}, {description}")
+
+            return data.get("access_token")
+
+        except requests.exceptions.RequestException as e:
+            raise UserException(f"Failed to connect to {url}: {e}")
 
 
 if __name__ == "__main__":
