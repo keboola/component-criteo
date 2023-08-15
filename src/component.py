@@ -139,10 +139,13 @@ class Component(ComponentBase):
             except JSONDecodeError as json_decode_err:
                 raise UserException(f"Failed to parse exception {CriteoClientException}") from json_decode_err
 
-        if "errors" in error and len(error.get("errors", [])) > 0:
-            error_text = f"Failed to fetch data : {error.get('errors')[0].get('code')} : " \
-                         f"{error.get('errors')[0].get('detail')}\n Whole error : {error}"
-            return error_text
+        try:
+            if "errors" in error and len(error.get("errors", [])) > 0:
+                error_text = f"Failed to fetch data : {error.get('errors')[0].get('code')} : " \
+                             f"{error.get('errors')[0].get('detail')}\n Whole error : {error}"
+                return error_text
+        except AttributeError:
+            return str(error)
 
         error_text = f"Failed to fetch data : {error.get('error')} : {error.get('error_description')}\n" \
                      f" Whole error : {error}"
