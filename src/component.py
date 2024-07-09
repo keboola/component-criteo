@@ -99,7 +99,8 @@ class Component(ComponentBase):
             mkdir(table_path)
 
     def fetch_data_and_write(self, client: CriteoClient, dimensions: List[str], metrics: List[str],
-                             date_ranges: Iterator, currency: str, advertiser_ids: str, out_table_path: str) -> List[str]:
+                             date_ranges: Iterator, currency: str, advertiser_ids: str, out_table_path: str)\
+            -> List[str]:
         fieldnames = []
         for i, date_range in enumerate(date_ranges):
             slice_path = path.join(out_table_path, str(i))
