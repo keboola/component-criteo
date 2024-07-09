@@ -62,6 +62,10 @@ class Component(ComponentBase):
 
         currency = params.get(KEY_CURRENCY, "EUR")
         advertiser_ids = params.get(KEY_ADVERTISER_IDS, "")
+        if advertiser_ids:
+            logging.info(f"Fetching data for advertiser ids : {advertiser_ids}")
+        else:
+            logging.info("Fetching data for all advertisers")
 
         date_from = params.get(KEY_DATE_FROM)
         date_to = params.get(KEY_DATE_TO)
