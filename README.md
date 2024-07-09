@@ -35,6 +35,7 @@ Now you can use the client id and secret obtained from the text file
  - Dimensions (dimensions) - [REQ] Dimensions to fetch for report eg. CampaignId, Day, Category
  - Metrics (metrics) - [REQ] Metrics to fetch for report eg. Clicks, Displays, AdvertiserCost
  - Currency (currency) - [OPT] Currency for report, default EUR
+ - Advertiser ID (advertiser_id) - [OPT] A comma separated list of advertiser IDs to fetch data for eg. 12308,12309 or 12308. You can leave this field empty to fetch data for all advertisers.
  - Date range type (date_range) - [REQ] Custom, Last week (sun-sat), Last month
  - Date from (date_from) - [OPT] Start date of the report eg. 3 days ago
  - Date to (date_to) - [OPT] End date of the report eg. 1 day ago

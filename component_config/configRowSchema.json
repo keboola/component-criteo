@@ -36,6 +36,13 @@
       "propertyOrder": 25,
       "default" : "EUR"
     },
+    "advertiser_ids": {
+      "type": "string",
+      "title": "Advertiser IDs (Optional)",
+      "minLength": 1,
+      "description": "A comma separated list of advertiser IDs to fetch data for eg. 12308,12309 or 12308. You can leave this field empty to fetch data for all advertisers.",
+      "propertyOrder": 30
+    },
     "date_range": {
       "title": "Date range type",
       "type": "string",
@@ -44,7 +51,7 @@
           "Last month",
           "Custom"
       ],
-      "propertyOrder": 30
+      "propertyOrder": 35
     },
     "date_from": {
       "title": "Date from",
