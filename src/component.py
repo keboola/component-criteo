@@ -208,7 +208,7 @@ class Component(ComponentBase):
         return start_day_of_prev_month, last_day_of_prev_month
 
     def estimate_day_delay(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_to: datetime,
-                           currency: str, advertiser_ids) -> int:
+                           currency: str, advertiser_ids: str) -> int:
         """
         Returns the amount of days it is safe to fetch data for.
         In case when query returns zero results, returns UserException.
