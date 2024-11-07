@@ -217,7 +217,9 @@ class Component(ComponentBase):
         date_to = date_to - timedelta(days=1)
         date_from = date_to - timedelta(days=30)
         rows_per_day = API_ROW_LIMIT
-        sample_report = self._fetch_report(client, dimensions, metrics, date_from, date_to, currency)
+        response = self._fetch_report(client, dimensions, metrics, date_from, date_to, currency)
+        sample_report = response.read()
+        logging.info(f"Sample report content : {sample_report}")
         if sample_report:
             sample_report_len = int(sample_report.count("\n"))
             if sample_report_len == 0:
