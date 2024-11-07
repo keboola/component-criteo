@@ -3,6 +3,6 @@ keboola.utils
 keboola.http-client
 mock
 freezegun
-criteo-api-marketingsolutions-sdk==2023.7.0.230726 # version needs to be fixed
+criteo-api-marketingsolutions-sdk==2024.10.0.241029 # version needs to be fixed
 retry
 dateparser
