@@ -108,10 +108,10 @@ class Component(ComponentBase):
             response_content = response_content.decode("utf-8")
             logging.info(f"Response content {response_content}")
             last_header_index = response_content.find('\n')
-            header_string = response[0:last_header_index].strip()
+            header_string = response_content[0:last_header_index].strip()
             fieldnames = self.parse_list_from_string(header_string, delimeter=";")
             row_count = 0
-            if response:
+            if response_content:
                 row_count = response_content.count("\n")
             if row_count >= API_ROW_LIMIT:
                 raise UserException("Fetching of data failed, please create a smaller date range for the report")
