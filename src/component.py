@@ -1,4 +1,6 @@
 import logging
+from io import BufferedReader
+
 import dateparser
 import requests
 import json
@@ -102,20 +104,23 @@ class Component(ComponentBase):
             slice_path = path.join(out_table_path, str(i))
             logging.info(f"Downloading report chunk from {date_range[0]} to {date_range[1]}")
             response = self._fetch_report(client, dimensions, metrics, date_range[0], date_range[1], currency)
-            last_header_index = response.find('\n')
-            header_string = response[0:last_header_index].strip()
+            response_content = response.read()
+            response_content = response_content.decode("utf-8")
+            logging.info(f"Response content {response_content}")
+            last_header_index = response_content.find('\n')
+            header_string = response_content[0:last_header_index].strip()
             fieldnames = self.parse_list_from_string(header_string, delimeter=";")
             row_count = 0
-            if response:
-                row_count = response.count("\n")
+            if response_content:
+                row_count = response_content.count("\n")
             if row_count >= API_ROW_LIMIT:
                 raise UserException("Fetching of data failed, please create a smaller date range for the report")
             with open(slice_path, 'w', encoding='utf-8') as out:
-                out.write(response[last_header_index + 1:])
+                out.write(response_content[last_header_index + 1:])
         return fieldnames
 
     def _fetch_report(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_from: datetime,
-                      date_to: datetime, currency: str) -> str:
+                      date_to: datetime, currency: str) -> BufferedReader:
         try:
             return client.get_report(dimensions, metrics, date_from, date_to, currency)
         except CriteoClientException as criteo_exc:
@@ -212,7 +217,10 @@ class Component(ComponentBase):
         date_to = date_to - timedelta(days=1)
         date_from = date_to - timedelta(days=30)
         rows_per_day = API_ROW_LIMIT
-        sample_report = self._fetch_report(client, dimensions, metrics, date_from, date_to, currency)
+        response = self._fetch_report(client, dimensions, metrics, date_from, date_to, currency)
+        sample_report = response.read()
+        logging.info(f"Sample report content : {sample_report}")
+        sample_report = sample_report.decode("utf-8")
         if sample_report:
             sample_report_len = int(sample_report.count("\n"))
             if sample_report_len == 0:
