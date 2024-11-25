@@ -120,7 +120,8 @@ class Component(ComponentBase):
 
     def _fetch_report(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_from: datetime,
                       date_to: datetime, currency: str) -> BufferedReader:
-        logging.info(f"Fetching report for dimensions: {dimensions}, metrics: {metrics}, date_from: {date_from}, date_to: {date_to}, currency: {currency}")
+        logging.info(f"Fetching report for dimensions: {dimensions}, metrics: {metrics}, date_from: {date_from},"
+                     f"date_to: {date_to}, currency: {currency}")
         try:
             return client.get_report(dimensions, metrics, date_from, date_to, currency)
         except CriteoClientException as criteo_exc:
@@ -215,7 +216,8 @@ class Component(ComponentBase):
 
     def estimate_day_delay(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_to: datetime,
                            currency: str) -> int:
-        logging.info(f"Estimating day delay for dimensions: {dimensions}, metrics: {metrics}, date_to: {date_to}, currency: {currency}")
+        logging.info(f"Estimating day delay for dimensions: {dimensions}, metrics: {metrics},"
+                     f"date_to: {date_to}, currency: {currency}")
         date_to = date_to - timedelta(days=1)
         date_from = date_to - timedelta(days=30)
         rows_per_day = API_ROW_LIMIT

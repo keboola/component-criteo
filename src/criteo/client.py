@@ -36,7 +36,8 @@ class CriteoClient:
 
     def get_report(self, dimensions: List[str], metrics: List[str], date_from: datetime, date_to: datetime,
                    currency: str) -> BufferedReader:
-        logging.info(f"Getting report for dimensions: {dimensions}, metrics: {metrics}, date_from: {date_from}, date_to: {date_to}, currency: {currency}")
+        logging.info(f"Getting report for dimensions: {dimensions}, metrics: {metrics}," 
+                     f"date_from: {date_from}, date_to: {date_to}, currency: {currency}")
         api_instance = analytics_api.AnalyticsApi(self.client)
         try:
             statistics_report_query_message = StatisticsReportQueryMessage(
