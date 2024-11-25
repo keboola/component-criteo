@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 from io import BufferedReader
+import logging
 
 import criteo_api_marketingsolutions_v2024_10 as cm
 from criteo_api_marketingsolutions_v2024_10 import Configuration
@@ -22,10 +23,12 @@ class CriteoClientException(Exception):
 
 class CriteoClient:
     def __init__(self, client: ApiClient) -> None:
+        logging.info("Initializing CriteoClient")
         self.client = client
 
     @classmethod
     def login(cls, access_token: str):
+        logging.info("Logging in to CriteoClient")
         configuration = Configuration(access_token=access_token)
         client = cm.ApiClient(configuration)
 
@@ -33,6 +36,7 @@ class CriteoClient:
 
     def get_report(self, dimensions: List[str], metrics: List[str], date_from: datetime, date_to: datetime,
                    currency: str) -> BufferedReader:
+        logging.info(f"Getting report for dimensions: {dimensions}, metrics: {metrics}, date_from: {date_from}, date_to: {date_to}, currency: {currency}")
         api_instance = analytics_api.AnalyticsApi(self.client)
         try:
             statistics_report_query_message = StatisticsReportQueryMessage(
@@ -43,11 +47,14 @@ class CriteoClient:
                 currency=currency,
                 format="CSV")
         except ApiValueError as api_exc:
+            logging.error(f"ApiValueError: {api_exc}")
             raise CriteoClientException(api_exc) from api_exc
 
         try:
             api_response = api_instance.get_adset_report(
                 statistics_report_query_message=statistics_report_query_message)
+            logging.info("Report fetched successfully")
             return api_response
         except ApiException as api_exc:
+            logging.error(f"ApiException: {api_exc}")
             raise CriteoClientException(api_exc) from api_exc

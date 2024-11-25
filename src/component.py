@@ -36,10 +36,12 @@ REQUIRED_IMAGE_PARS = []
 class Component(ComponentBase):
 
     def __init__(self) -> None:
+        logging.info("Initializing Component")
         super().__init__(required_parameters=REQUIRED_PARAMETERS,
                          required_image_parameters=REQUIRED_IMAGE_PARS)
 
     def run(self) -> None:
+        logging.info("Running Component")
         params = self.configuration.parameters
 
         client_id = params.get(KEY_CLIENT_ID)
@@ -68,9 +70,6 @@ class Component(ComponentBase):
         date_range = params.get(KEY_DATE_RANGE)
         date_from, date_to = self.get_date_range(date_from, date_to, date_range)
 
-        # due to there being a row limit 0f 100k rows, but no automatic pagination; you have to specify a
-        # date range which has less than 100k rows. Since the amount of data is not fixed over a period of time
-        # you must estimate a safe date range to get data for
         day_delay = self.estimate_day_delay(client, dimensions, metrics, date_to, currency)
         date_ranges = self.split_date_range(date_from, date_to, day_delay)
         out_table_name = params.get(KEY_OUT_TABLE_NAME)
@@ -93,7 +92,7 @@ class Component(ComponentBase):
 
     @staticmethod
     def create_sliced_directory(table_path: str):
-        logging.info("Creating sliced file")
+        logging.info(f"Creating sliced directory at {table_path}")
         if not path.isdir(table_path):
             mkdir(table_path)
 
@@ -121,6 +120,7 @@ class Component(ComponentBase):
 
     def _fetch_report(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_from: datetime,
                       date_to: datetime, currency: str) -> BufferedReader:
+        logging.info(f"Fetching report for dimensions: {dimensions}, metrics: {metrics}, date_from: {date_from}, date_to: {date_to}, currency: {currency}")
         try:
             return client.get_report(dimensions, metrics, date_from, date_to, currency)
         except CriteoClientException as criteo_exc:
@@ -129,6 +129,7 @@ class Component(ComponentBase):
 
     @staticmethod
     def parse_error(exception: CriteoClientException) -> str:
+        logging.error(f"Parsing error from exception: {exception}")
         try:
             error = exception.args[0].body
         except AttributeError:
@@ -158,11 +159,13 @@ class Component(ComponentBase):
 
     @staticmethod
     def parse_list_from_string(string_list: str, delimeter: str = ",") -> List[str]:
+        logging.info(f"Parsing list from string: {string_list} with delimiter: {delimeter}")
         list_of_strings = string_list.split(delimeter)
         list_of_strings = [word.strip() for word in list_of_strings]
         return list_of_strings
 
     def get_date_range(self, date_from_str: str, date_to_str: str, date_range: str) -> Tuple[datetime, datetime]:
+        logging.info(f"Getting date range from: {date_from_str}, to: {date_to_str}, range: {date_range}")
         if date_range == "Last week (sun-sat)":
             date_from, date_to = self.get_last_week_dates()
         elif date_range == "Last month":
@@ -182,6 +185,7 @@ class Component(ComponentBase):
 
     @staticmethod
     def split_date_range(start_date: datetime, end_date: datetime, day_delay: int) -> Iterator:
+        logging.info(f"Splitting date range from: {start_date} to: {end_date} with day delay: {day_delay}")
         delta = timedelta(days=day_delay)
         current_date = start_date
         if current_date + delta < end_date:
@@ -195,6 +199,7 @@ class Component(ComponentBase):
 
     @staticmethod
     def get_last_week_dates() -> Tuple[datetime, datetime]:
+        logging.info("Getting last week dates")
         today = datetime.today()
         offset = (today.weekday() - 5) % 7
         last_week_saturday = today - timedelta(days=offset)
@@ -203,17 +208,14 @@ class Component(ComponentBase):
 
     @staticmethod
     def get_last_month_dates() -> Tuple[datetime, datetime]:
+        logging.info("Getting last month dates")
         last_day_of_prev_month = datetime.today().replace(day=1) - timedelta(days=1)
         start_day_of_prev_month = datetime.today().replace(day=1) - timedelta(days=last_day_of_prev_month.day)
         return start_day_of_prev_month, last_day_of_prev_month
 
     def estimate_day_delay(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_to: datetime,
                            currency: str) -> int:
-        """
-        Returns the amount of days it is safe to fetch data for.
-        In case when query returns zero results, returns UserException.
-        When there is not more than one row for a day, sets to range to maximum limit (100).
-        """
+        logging.info(f"Estimating day delay for dimensions: {dimensions}, metrics: {metrics}, date_to: {date_to}, currency: {currency}")
         date_to = date_to - timedelta(days=1)
         date_from = date_to - timedelta(days=30)
         rows_per_day = API_ROW_LIMIT
@@ -228,19 +230,17 @@ class Component(ComponentBase):
             else:
                 rows_per_day = int(sample_report_len / 31)
 
-        # report range is maximum amount of days to get 25% of the api row limit size to be safe as data amount
-        # over time can fluctuate
         if rows_per_day > 1:
             report_range = int((API_ROW_LIMIT * 0.25) / rows_per_day)
         else:
-            report_range = 10  # since it is not possible to estimate the report range we chose a conservative value
+            report_range = 10
 
-        # Max report length should be 100 days
         report_range = min(100, report_range)
         return report_range
 
     @staticmethod
     def get_access_token(client_id, client_secret) -> str:
+        logging.info("Getting access token")
         url = "https://api.criteo.com/oauth2/token"
 
         payload = {
@@ -273,6 +273,7 @@ class Component(ComponentBase):
 
 if __name__ == "__main__":
     try:
+        logging.info("Starting Component")
         comp = Component()
         comp.run()
     except UserException as exc:
