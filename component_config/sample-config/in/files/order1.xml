@@ -4,7 +4,7 @@
         <order>
             <id>1</id>
             <date>2018-01-01</date>
-            <cust_name>David</cust_name>	
+            <cust_name>David</cust_name>
             <order-item>
                 <price currency="CZK">100</price>
                 <item>Umbrella</item>

@@ -1,13 +1,13 @@
 # Criteo Extractor
 This extractor allows users to extract data reports from the Criteo Marketing Solutions API.
 
-**Table of contents:**  
-  
+**Table of contents:**
+
 [TOC]
 
 ## Getting credentials
 
-Criteo oAuth flow requires client ids and secrets from a developer app. Since a developer app in criteo is universal, meaning it 
+Criteo oAuth flow requires client ids and secrets from a developer app. Since a developer app in criteo is universal, meaning it
 can fetch data from all clients who authorize the app using a consent screen, the component requires each client to create their own
 developer app for security reasons. So there is no possibility for one user to access data of another user.
 
