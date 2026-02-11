@@ -5,7 +5,7 @@ from io import BufferedReader
 import criteo_api_marketingsolutions_v2024_10 as cm
 from criteo_api_marketingsolutions_v2024_10 import Configuration
 from criteo_api_marketingsolutions_v2024_10.api_client import ApiClient
-from criteo_api_marketingsolutions_v2024_10.api import analytics_api
+from criteo_api_marketingsolutions_v2024_10.api import analytics_api, advertiser_api
 from criteo_api_marketingsolutions_v2024_10.model.statistics_report_query_message import StatisticsReportQueryMessage
 from criteo_api_marketingsolutions_v2024_10.exceptions import ApiValueError
 from datetime import datetime
@@ -31,17 +31,30 @@ class CriteoClient:
 
         return cls(client=client)
 
+    def get_advertiser_ids(self) -> str:
+        api_instance = advertiser_api.AdvertiserApi(self.client)
+        try:
+            response = api_instance.api_portfolio_get()
+            if response.data:
+                return ",".join([item.id for item in response.data])
+            return None
+        except ApiException as api_exc:
+            raise CriteoClientException(api_exc) from api_exc
+
     def get_report(self, dimensions: List[str], metrics: List[str], date_from: datetime, date_to: datetime,
-                   currency: str) -> BufferedReader:
+                   currency: str, advertiser_ids: str = None) -> BufferedReader:
         api_instance = analytics_api.AnalyticsApi(self.client)
         try:
-            statistics_report_query_message = StatisticsReportQueryMessage(
+            query_params = dict(
                 dimensions=dimensions,
                 metrics=metrics,
                 start_date=date_from,
                 end_date=date_to,
                 currency=currency,
                 format="CSV")
+            if advertiser_ids:
+                query_params["advertiser_ids"] = advertiser_ids
+            statistics_report_query_message = StatisticsReportQueryMessage(**query_params)
         except ApiValueError as api_exc:
             raise CriteoClientException(api_exc) from api_exc
 

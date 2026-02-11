@@ -28,6 +28,12 @@
       "description": "Metrics to fetch for report eg. Clicks, Displays, AdvertiserCost",
       "propertyOrder": 20
     },
+    "advertiser_ids": {
+      "type": "string",
+      "title": "Advertiser IDs",
+      "description": "Comma-separated list of Criteo advertiser IDs to filter the report. Required when multiple advertisers are linked to the Criteo app.",
+      "propertyOrder": 5
+    },
     "currency": {
       "type": "string",
       "title": "Currency",
