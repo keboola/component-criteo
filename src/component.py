@@ -64,6 +64,16 @@ class Component(ComponentBase):
 
         currency = params.get(KEY_CURRENCY, "EUR")
         advertiser_ids = params.get(KEY_ADVERTISER_IDS)
+        if not advertiser_ids:
+            logging.info("No advertiser_ids configured, fetching all available advertisers...")
+            try:
+                advertiser_ids = client.get_advertiser_ids()
+                if advertiser_ids:
+                    logging.info(f"Fetched advertiser IDs: {advertiser_ids}")
+                else:
+                    logging.warning("No advertisers found in portfolio.")
+            except CriteoClientException as e:
+                logging.warning(f"Failed to fetch advertiser IDs: {e}")
         date_from = params.get(KEY_DATE_FROM)
         date_to = params.get(KEY_DATE_TO)
         date_range = params.get(KEY_DATE_RANGE)
