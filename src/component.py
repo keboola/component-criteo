@@ -22,6 +22,7 @@ KEY_DIMENSIONS = "dimensions"
 KEY_OUT_TABLE_NAME = "out_table_name"
 KEY_CURRENCY = "currency"
 
+KEY_ADVERTISER_IDS = "advertiser_ids"
 KEY_LOADING_OPTIONS = "loading_options"
 KEY_LOADING_OPTIONS_INCREMENTAL = "incremental"
 KEY_LOADING_OPTIONS_PKEY = "pkey"
@@ -62,7 +63,7 @@ class Component(ComponentBase):
         dimensions = self.parse_list_from_string(dimensions)
 
         currency = params.get(KEY_CURRENCY, "EUR")
-
+        advertiser_ids = params.get(KEY_ADVERTISER_IDS)
         date_from = params.get(KEY_DATE_FROM)
         date_to = params.get(KEY_DATE_TO)
         date_range = params.get(KEY_DATE_RANGE)
@@ -71,7 +72,7 @@ class Component(ComponentBase):
         # due to there being a row limit 0f 100k rows, but no automatic pagination; you have to specify a
         # date range which has less than 100k rows. Since the amount of data is not fixed over a period of time
         # you must estimate a safe date range to get data for
-        day_delay = self.estimate_day_delay(client, dimensions, metrics, date_to, currency)
+        day_delay = self.estimate_day_delay(client, dimensions, metrics, date_to, currency, advertiser_ids)
         date_ranges = self.split_date_range(date_from, date_to, day_delay)
         out_table_name = params.get(KEY_OUT_TABLE_NAME)
 
@@ -85,7 +86,8 @@ class Component(ComponentBase):
         logging.info(
             f"Fetching report data for dimensions : {dimensions}, metrics : {metrics}, from {date_from} to "
             f"{date_to}, with currency : {currency}")
-        fieldnames = self.fetch_data_and_write(client, dimensions, metrics, date_ranges, currency, table.full_path)
+        fieldnames = self.fetch_data_and_write(client, dimensions, metrics, date_ranges, currency, table.full_path,
+                                               advertiser_ids)
         logging.info("Parsing downloaded results")
         header_normalizer = get_normalizer(NormalizerStrategy.DEFAULT)
         table.columns = header_normalizer.normalize_header(fieldnames)
@@ -98,12 +100,15 @@ class Component(ComponentBase):
             mkdir(table_path)
 
     def fetch_data_and_write(self, client: CriteoClient, dimensions: List[str], metrics: List[str],
-                             date_ranges: Iterator, currency: str, out_table_path: str) -> List[str]:
+                             date_ranges: Iterator, currency: str, out_table_path: str,
+                             advertiser_ids: str = None) -> List[str]:
         fieldnames = []
         for i, date_range in enumerate(date_ranges):
             slice_path = path.join(out_table_path, str(i))
             logging.info(f"Downloading report chunk from {date_range[0]} to {date_range[1]}")
-            response = self._fetch_report(client, dimensions, metrics, date_range[0], date_range[1], currency)
+            response = self._fetch_report(
+                client, dimensions, metrics, date_range[0], date_range[1],
+                currency, advertiser_ids)
             response_content = response.read()
             response_content = response_content.decode("utf-8")
             logging.info(f"Response content {response_content}")
@@ -120,9 +125,9 @@ class Component(ComponentBase):
         return fieldnames
 
     def _fetch_report(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_from: datetime,
-                      date_to: datetime, currency: str) -> BufferedReader:
+                      date_to: datetime, currency: str, advertiser_ids: str = None) -> BufferedReader:
         try:
-            return client.get_report(dimensions, metrics, date_from, date_to, currency)
+            return client.get_report(dimensions, metrics, date_from, date_to, currency, advertiser_ids)
         except CriteoClientException as criteo_exc:
             error_text = self.parse_error(criteo_exc)
             raise UserException(error_text) from criteo_exc
@@ -208,7 +213,7 @@ class Component(ComponentBase):
         return start_day_of_prev_month, last_day_of_prev_month
 
     def estimate_day_delay(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_to: datetime,
-                           currency: str) -> int:
+                           currency: str, advertiser_ids: str = None) -> int:
         """
         Returns the amount of days it is safe to fetch data for.
         In case when query returns zero results, returns UserException.
@@ -217,7 +222,7 @@ class Component(ComponentBase):
         date_to = date_to - timedelta(days=1)
         date_from = date_to - timedelta(days=30)
         rows_per_day = API_ROW_LIMIT
-        response = self._fetch_report(client, dimensions, metrics, date_from, date_to, currency)
+        response = self._fetch_report(client, dimensions, metrics, date_from, date_to, currency, advertiser_ids)
         sample_report = response.read()
         logging.info(f"Sample report content : {sample_report}")
         sample_report = sample_report.decode("utf-8")

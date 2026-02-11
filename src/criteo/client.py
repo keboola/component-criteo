@@ -32,16 +32,19 @@ class CriteoClient:
         return cls(client=client)
 
     def get_report(self, dimensions: List[str], metrics: List[str], date_from: datetime, date_to: datetime,
-                   currency: str) -> BufferedReader:
+                   currency: str, advertiser_ids: str = None) -> BufferedReader:
         api_instance = analytics_api.AnalyticsApi(self.client)
         try:
-            statistics_report_query_message = StatisticsReportQueryMessage(
+            query_params = dict(
                 dimensions=dimensions,
                 metrics=metrics,
                 start_date=date_from,
                 end_date=date_to,
                 currency=currency,
                 format="CSV")
+            if advertiser_ids:
+                query_params["advertiser_ids"] = advertiser_ids
+            statistics_report_query_message = StatisticsReportQueryMessage(**query_params)
         except ApiValueError as api_exc:
             raise CriteoClientException(api_exc) from api_exc
 
