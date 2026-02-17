@@ -41,7 +41,7 @@ class CriteoClient:
                 start_date=date_from,
                 end_date=date_to,
                 currency=currency,
-                format="CSV")
+                format="csv")
         except ApiValueError as api_exc:
             raise CriteoClientException(api_exc) from api_exc
 
