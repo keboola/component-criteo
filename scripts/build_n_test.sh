@@ -1,5 +1,5 @@
 #!/bin/sh
 set -e
 
-ruff check .
+flake8 .
 python -m unittest discover

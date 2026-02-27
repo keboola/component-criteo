@@ -13,6 +13,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "flake8>=7.3.0",
     "ruff>=0.15.0",
     "mock",
     "freezegun",
