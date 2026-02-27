@@ -1,8 +1,0 @@
-keboola.component==1.1.0
-keboola.utils
-keboola.http-client
-mock
-freezegun
-criteo-api-marketingsolutions-sdk==2025.10.0.260210
-retry
-dateparser
