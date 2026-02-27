@@ -8,7 +8,8 @@ from typing import Iterator, List, Tuple
 
 import dateparser
 import requests
-from keboola.component.base import ComponentBase, UserException
+from keboola.component import UserException
+from keboola.component.base import ComponentBase
 from keboola.utils.header_normalizer import NormalizerStrategy, get_normalizer
 
 from criteo import CriteoClient, CriteoClientException
