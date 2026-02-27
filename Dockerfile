@@ -1,8 +1,9 @@
 FROM python:3.13-slim
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# install gcc to be able to build packages - e.g. required by regex, dateparser
-RUN apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
+# uncomment the following line should you have any troubles installing certain packages which require C/C++ extensions
+# to be compiled during installation, eg. numpy, psycopg2, …
+# RUN apt-get update && apt-get install -y build-essential
 
 WORKDIR /code/
 
