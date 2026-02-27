@@ -78,7 +78,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "criteo-api-marketingsolutions-sdk", specifier = ">=2025.10.0.260210" },
+    { name = "criteo-api-marketingsolutions-sdk", specifier = "==2025.10.0.260210" },
     { name = "dateparser" },
     { name = "keboola-component", specifier = ">=1.1.0" },
     { name = "keboola-http-client" },
@@ -95,15 +95,15 @@ dev = [
 
 [[package]]
 name = "criteo-api-marketingsolutions-sdk"
-version = "2026.1.0.260223"
+version = "2025.10.0.260210"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "python-dateutil" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3d/c9/d6527e00b8fc7edf9f865df07efac599b75b842fd02c08ca2aa33e7cf7d7/criteo_api_marketingsolutions_sdk-2026.1.0.260223.tar.gz", hash = "sha256:eb57d591ac9c38502f36dca09a6431648035587378f0c3ee8617ec0f1756e932", size = 174449, upload-time = "2026-02-23T16:27:25.832Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e0/93/2416448e9bebb903e712585f6a431be4e272cb7b9b117565285d2669734b/criteo_api_marketingsolutions_sdk-2025.10.0.260210.tar.gz", hash = "sha256:f368de438aef25f860f8587e64b9e5dfd19a47f8ac07b4e7f1a19f8e888eaff1", size = 174392, upload-time = "2026-02-10T08:33:34.052Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7f/ae/4d681b422b2609a7b61a315f488f2842960d2ebb0fac9779f91f677a9fde/criteo_api_marketingsolutions_sdk-2026.1.0.260223-py3-none-any.whl", hash = "sha256:65d5d3c54424bdaaa77f531df500e93f9fa1b0f6b055f1534887860239ed0529", size = 869632, upload-time = "2026-02-23T16:27:05.84Z" },
+    { url = "https://files.pythonhosted.org/packages/c5/4d/8ae4f0601193adabd3d627acb5c4e092adbb0a4a2d2cde8da2b36535bbd7/criteo_api_marketingsolutions_sdk-2025.10.0.260210-py3-none-any.whl", hash = "sha256:e3e165a447efa7913b8d26d32c55e4ed9d4307684a56a216c66368c24585d784", size = 869679, upload-time = "2026-02-10T08:33:11.467Z" },
 ]
 
 [[package]]
