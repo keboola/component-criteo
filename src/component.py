@@ -57,7 +57,7 @@ class Component(ComponentBase):
 
         client = CriteoClient.login(access_token)
 
-        loading_options = params.get(KEY_LOADING_OPTIONS)
+        loading_options = params.get(KEY_LOADING_OPTIONS) or {}
         incremental = bool(loading_options.get(KEY_LOADING_OPTIONS_INCREMENTAL))
         pkey = loading_options.get(KEY_LOADING_OPTIONS_PKEY, [])
 
@@ -127,10 +127,10 @@ class Component(ComponentBase):
             response = self._fetch_report(client, dimensions, metrics, date_range[0], date_range[1], currency)
             response_content = response.read()
             response_content = response_content.decode("utf-8")
-            logging.info(f"Response content {response_content}")
+            logging.debug(f"Response content {response_content}")
             last_header_index = response_content.find("\n")
             header_string = response_content[0:last_header_index].strip()
-            fieldnames = self.parse_list_from_string(header_string, delimeter=";")
+            fieldnames = self.parse_list_from_string(header_string, delimiter=";")
             row_count = 0
             if response_content:
                 row_count = response_content.count("\n")
@@ -164,13 +164,13 @@ class Component(ComponentBase):
                 error = exception.args[0].args[0]
                 return error
             except IndexError as indx_err:
-                raise UserException(f"Failed to parse exception {CriteoClientException}") from indx_err
+                raise UserException(f"Failed to parse exception {exception}") from indx_err
 
         if isinstance(error, bytes):
             try:
                 error = json.loads(error.decode("utf-8"))
             except JSONDecodeError as json_decode_err:
-                raise UserException(f"Failed to parse exception {CriteoClientException}") from json_decode_err
+                raise UserException(f"Failed to parse exception {exception}") from json_decode_err
 
         try:
             if "errors" in error and len(error.get("errors", [])) > 0:
@@ -188,8 +188,8 @@ class Component(ComponentBase):
         return error_text
 
     @staticmethod
-    def parse_list_from_string(string_list: str, delimeter: str = ",") -> list[str]:
-        list_of_strings = string_list.split(delimeter)
+    def parse_list_from_string(string_list: str, delimiter: str = ",") -> list[str]:
+        list_of_strings = string_list.split(delimiter)
         list_of_strings = [word.strip() for word in list_of_strings]
         return list_of_strings
 
@@ -257,7 +257,7 @@ class Component(ComponentBase):
         rows_per_day = API_ROW_LIMIT
         response = self._fetch_report(client, dimensions, metrics, date_from, date_to, currency)
         sample_report = response.read()
-        logging.info(f"Sample report content : {sample_report}")
+        logging.debug(f"Sample report content : {sample_report}")
         sample_report = sample_report.decode("utf-8")
         if sample_report:
             sample_report_len = int(sample_report.count("\n"))

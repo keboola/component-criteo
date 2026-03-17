@@ -5,7 +5,6 @@ from io import BufferedReader
 import criteo_api_marketingsolutions_v2025_10 as cm
 from criteo_api_marketingsolutions_v2025_10 import Configuration
 from criteo_api_marketingsolutions_v2025_10.api import analytics_api
-from criteo_api_marketingsolutions_v2025_10.api_client import ApiClient
 from criteo_api_marketingsolutions_v2025_10.exceptions import ApiValueError
 from criteo_api_marketingsolutions_v2025_10.model.statistics_report_query_message import (
     StatisticsReportQueryMessage,
