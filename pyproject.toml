@@ -1,0 +1,26 @@
+[project]
+name = "component-criteo"
+dynamic = ["version"]
+requires-python = "~=3.13.0"
+dependencies = [
+    "keboola-component>=1.9.0",
+    "keboola-utils",
+    "keboola-http-client",
+    "criteo-api-marketingsolutions-sdk==2025.10.0.260210",
+    "retry",
+    "dateparser",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.0",
+    "mock",
+    "freezegun",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+extend-select = ["I", "UP"]  # Add isort to default ruff rules

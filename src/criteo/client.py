@@ -1,19 +1,18 @@
-from __future__ import print_function
 
+from datetime import datetime
 from io import BufferedReader
 
-import criteo_api_marketingsolutions_v2024_10 as cm
-from criteo_api_marketingsolutions_v2024_10 import Configuration
-from criteo_api_marketingsolutions_v2024_10.api_client import ApiClient
-from criteo_api_marketingsolutions_v2024_10.api import analytics_api
-from criteo_api_marketingsolutions_v2024_10.model.statistics_report_query_message import StatisticsReportQueryMessage
-from criteo_api_marketingsolutions_v2024_10.exceptions import ApiValueError
-from datetime import datetime
-from typing import List
-from criteo_api_marketingsolutions_v2024_10.rest import ApiException
+import criteo_api_marketingsolutions_v2025_10 as cm
+from criteo_api_marketingsolutions_v2025_10 import Configuration
+from criteo_api_marketingsolutions_v2025_10.api import analytics_api
+from criteo_api_marketingsolutions_v2025_10.exceptions import ApiValueError
+from criteo_api_marketingsolutions_v2025_10.model.statistics_report_query_message import (
+    StatisticsReportQueryMessage,
+)
+from criteo_api_marketingsolutions_v2025_10.rest import ApiException
 
 # There is only one accepted GRANT_TYPE
-GRANT_TYPE = 'client_credentials'
+GRANT_TYPE = "client_credentials"
 
 
 class CriteoClientException(Exception):
@@ -21,7 +20,7 @@ class CriteoClientException(Exception):
 
 
 class CriteoClient:
-    def __init__(self, client: ApiClient) -> None:
+    def __init__(self, client: cm.ApiClient) -> None:
         self.client = client
 
     @classmethod
@@ -31,8 +30,14 @@ class CriteoClient:
 
         return cls(client=client)
 
-    def get_report(self, dimensions: List[str], metrics: List[str], date_from: datetime, date_to: datetime,
-                   currency: str) -> BufferedReader:
+    def get_report(
+        self,
+        dimensions: list[str],
+        metrics: list[str],
+        date_from: datetime,
+        date_to: datetime,
+        currency: str,
+    ) -> BufferedReader:
         api_instance = analytics_api.AnalyticsApi(self.client)
         try:
             statistics_report_query_message = StatisticsReportQueryMessage(
@@ -41,13 +46,15 @@ class CriteoClient:
                 start_date=date_from,
                 end_date=date_to,
                 currency=currency,
-                format="CSV")
+                format="csv",
+            )
         except ApiValueError as api_exc:
             raise CriteoClientException(api_exc) from api_exc
 
         try:
             api_response = api_instance.get_adset_report(
-                statistics_report_query_message=statistics_report_query_message)
+                statistics_report_query_message=statistics_report_query_message
+            )
             return api_response
         except ApiException as api_exc:
             raise CriteoClientException(api_exc) from api_exc

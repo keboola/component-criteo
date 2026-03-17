@@ -1,8 +1,0 @@
-keboola.component==1.1.0
-keboola.utils
-keboola.http-client
-mock
-freezegun
-criteo-api-marketingsolutions-sdk==2024.10.0.241029 # version needs to be fixed
-retry
-dateparser

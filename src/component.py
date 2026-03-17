@@ -1,19 +1,21 @@
+import json
 import logging
+from collections.abc import Iterator
+from datetime import datetime, timedelta
 from io import BufferedReader
+from json.decoder import JSONDecodeError
+from os import mkdir, path
 
 import dateparser
 import requests
-import json
-from json.decoder import JSONDecodeError
-from os import path, mkdir
-from criteo import CriteoClient, CriteoClientException
-from datetime import datetime, timedelta
-from keboola.utils.header_normalizer import get_normalizer, NormalizerStrategy
-from keboola.component.base import ComponentBase, UserException
-from typing import List, Iterator, Tuple
+from keboola.component import UserException
+from keboola.component.base import ComponentBase
+from keboola.utils.header_normalizer import NormalizerStrategy, get_normalizer
 
-KEY_CLIENT_ID = '#client_id'
-KEY_CLIENT_SECRET = '#client_secret'
+from criteo import CriteoClient, CriteoClientException
+
+KEY_CLIENT_ID = "#client_id"
+KEY_CLIENT_SECRET = "#client_secret"
 KEY_DATE_RANGE = "date_range"
 KEY_DATE_TO = "date_to"
 KEY_DATE_FROM = "date_from"
@@ -28,16 +30,23 @@ KEY_LOADING_OPTIONS_PKEY = "pkey"
 
 API_ROW_LIMIT = 100000
 
-REQUIRED_PARAMETERS = [KEY_CLIENT_ID, KEY_CLIENT_SECRET, KEY_DATE_RANGE, KEY_OUT_TABLE_NAME, KEY_METRICS,
-                       KEY_DIMENSIONS]
+REQUIRED_PARAMETERS = [
+    KEY_CLIENT_ID,
+    KEY_CLIENT_SECRET,
+    KEY_DATE_RANGE,
+    KEY_OUT_TABLE_NAME,
+    KEY_METRICS,
+    KEY_DIMENSIONS,
+]
 REQUIRED_IMAGE_PARS = []
 
 
 class Component(ComponentBase):
-
     def __init__(self) -> None:
-        super().__init__(required_parameters=REQUIRED_PARAMETERS,
-                         required_image_parameters=REQUIRED_IMAGE_PARS)
+        super().__init__(
+            required_parameters=REQUIRED_PARAMETERS,
+            required_image_parameters=REQUIRED_IMAGE_PARS,
+        )
 
     def run(self) -> None:
         params = self.configuration.parameters
@@ -48,8 +57,8 @@ class Component(ComponentBase):
 
         client = CriteoClient.login(access_token)
 
-        loading_options = params.get(KEY_LOADING_OPTIONS)
-        incremental = loading_options.get(KEY_LOADING_OPTIONS_INCREMENTAL)
+        loading_options = params.get(KEY_LOADING_OPTIONS) or {}
+        incremental = bool(loading_options.get(KEY_LOADING_OPTIONS_INCREMENTAL))
         pkey = loading_options.get(KEY_LOADING_OPTIONS_PKEY, [])
 
         if incremental and not pkey:
@@ -77,19 +86,24 @@ class Component(ComponentBase):
 
         header_normalizer = get_normalizer(NormalizerStrategy.DEFAULT)
         out_table_name = header_normalizer.normalize_header([out_table_name])[0]
-        table = self.create_out_table_definition(name=out_table_name, incremental=incremental, primary_key=pkey,
-                                                 is_sliced=True)
+        table = self.create_out_table_definition(
+            name=out_table_name,
+            incremental=incremental,
+            primary_key=pkey,
+            is_sliced=True,
+        )
         table.delimiter = ";"
         self.create_sliced_directory(table.full_path)
 
         logging.info(
             f"Fetching report data for dimensions : {dimensions}, metrics : {metrics}, from {date_from} to "
-            f"{date_to}, with currency : {currency}")
+            f"{date_to}, with currency : {currency}"
+        )
         fieldnames = self.fetch_data_and_write(client, dimensions, metrics, date_ranges, currency, table.full_path)
         logging.info("Parsing downloaded results")
         header_normalizer = get_normalizer(NormalizerStrategy.DEFAULT)
-        table.columns = header_normalizer.normalize_header(fieldnames)
-        self.write_tabledef_manifest(table)
+        table.add_columns(header_normalizer.normalize_header(fieldnames))
+        self.write_manifest(table)
 
     @staticmethod
     def create_sliced_directory(table_path: str):
@@ -97,8 +111,15 @@ class Component(ComponentBase):
         if not path.isdir(table_path):
             mkdir(table_path)
 
-    def fetch_data_and_write(self, client: CriteoClient, dimensions: List[str], metrics: List[str],
-                             date_ranges: Iterator, currency: str, out_table_path: str) -> List[str]:
+    def fetch_data_and_write(
+        self,
+        client: CriteoClient,
+        dimensions: list[str],
+        metrics: list[str],
+        date_ranges: Iterator,
+        currency: str,
+        out_table_path: str,
+    ) -> list[str]:
         fieldnames = []
         for i, date_range in enumerate(date_ranges):
             slice_path = path.join(out_table_path, str(i))
@@ -106,21 +127,28 @@ class Component(ComponentBase):
             response = self._fetch_report(client, dimensions, metrics, date_range[0], date_range[1], currency)
             response_content = response.read()
             response_content = response_content.decode("utf-8")
-            logging.info(f"Response content {response_content}")
-            last_header_index = response_content.find('\n')
+            logging.debug(f"Response content {response_content}")
+            last_header_index = response_content.find("\n")
             header_string = response_content[0:last_header_index].strip()
-            fieldnames = self.parse_list_from_string(header_string, delimeter=";")
+            fieldnames = self.parse_list_from_string(header_string, delimiter=";")
             row_count = 0
             if response_content:
                 row_count = response_content.count("\n")
             if row_count >= API_ROW_LIMIT:
                 raise UserException("Fetching of data failed, please create a smaller date range for the report")
-            with open(slice_path, 'w', encoding='utf-8') as out:
-                out.write(response_content[last_header_index + 1:])
+            with open(slice_path, "w", encoding="utf-8") as out:
+                out.write(response_content[last_header_index + 1 :])
         return fieldnames
 
-    def _fetch_report(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_from: datetime,
-                      date_to: datetime, currency: str) -> BufferedReader:
+    def _fetch_report(
+        self,
+        client: CriteoClient,
+        dimensions: list[str],
+        metrics: list[str],
+        date_from: datetime,
+        date_to: datetime,
+        currency: str,
+    ) -> BufferedReader:
         try:
             return client.get_report(dimensions, metrics, date_from, date_to, currency)
         except CriteoClientException as criteo_exc:
@@ -136,33 +164,36 @@ class Component(ComponentBase):
                 error = exception.args[0].args[0]
                 return error
             except IndexError as indx_err:
-                raise UserException(f"Failed to parse exception {CriteoClientException}") from indx_err
+                raise UserException(f"Failed to parse exception {exception}") from indx_err
 
         if isinstance(error, bytes):
             try:
-                error = json.loads(error.decode('utf-8'))
+                error = json.loads(error.decode("utf-8"))
             except JSONDecodeError as json_decode_err:
-                raise UserException(f"Failed to parse exception {CriteoClientException}") from json_decode_err
+                raise UserException(f"Failed to parse exception {exception}") from json_decode_err
 
         try:
             if "errors" in error and len(error.get("errors", [])) > 0:
-                error_text = f"Failed to fetch data : {error.get('errors')[0].get('code')} : " \
-                             f"{error.get('errors')[0].get('detail')}\n Whole error : {error}"
+                error_text = (
+                    f"Failed to fetch data : {error.get('errors')[0].get('code')} : "
+                    f"{error.get('errors')[0].get('detail')}\n Whole error : {error}"
+                )
                 return error_text
         except AttributeError:
             return str(error)
 
-        error_text = f"Failed to fetch data : {error.get('error')} : {error.get('error_description')}\n" \
-                     f" Whole error : {error}"
+        error_text = (
+            f"Failed to fetch data : {error.get('error')} : {error.get('error_description')}\n Whole error : {error}"
+        )
         return error_text
 
     @staticmethod
-    def parse_list_from_string(string_list: str, delimeter: str = ",") -> List[str]:
-        list_of_strings = string_list.split(delimeter)
+    def parse_list_from_string(string_list: str, delimiter: str = ",") -> list[str]:
+        list_of_strings = string_list.split(delimiter)
         list_of_strings = [word.strip() for word in list_of_strings]
         return list_of_strings
 
-    def get_date_range(self, date_from_str: str, date_to_str: str, date_range: str) -> Tuple[datetime, datetime]:
+    def get_date_range(self, date_from_str: str, date_to_str: str, date_range: str) -> tuple[datetime, datetime]:
         if date_range == "Last week (sun-sat)":
             date_from, date_to = self.get_last_week_dates()
         elif date_range == "Last month":
@@ -176,8 +207,9 @@ class Component(ComponentBase):
             except AttributeError:
                 raise UserException("Invalid custom date, please check documentation for valid inputs")
         else:
-            raise UserException(f"Invalid date range type {date_range}. Must be in : \'Last week (sun-sat)\'"
-                                f",\'Last month\', \'Custom\'")
+            raise UserException(
+                f"Invalid date range type {date_range}. Must be in : 'Last week (sun-sat)','Last month', 'Custom'"
+            )
         return date_from, date_to
 
     @staticmethod
@@ -194,7 +226,7 @@ class Component(ComponentBase):
             yield start_date, end_date
 
     @staticmethod
-    def get_last_week_dates() -> Tuple[datetime, datetime]:
+    def get_last_week_dates() -> tuple[datetime, datetime]:
         today = datetime.today()
         offset = (today.weekday() - 5) % 7
         last_week_saturday = today - timedelta(days=offset)
@@ -202,13 +234,19 @@ class Component(ComponentBase):
         return last_week_sunday, last_week_saturday
 
     @staticmethod
-    def get_last_month_dates() -> Tuple[datetime, datetime]:
+    def get_last_month_dates() -> tuple[datetime, datetime]:
         last_day_of_prev_month = datetime.today().replace(day=1) - timedelta(days=1)
         start_day_of_prev_month = datetime.today().replace(day=1) - timedelta(days=last_day_of_prev_month.day)
         return start_day_of_prev_month, last_day_of_prev_month
 
-    def estimate_day_delay(self, client: CriteoClient, dimensions: List[str], metrics: List[str], date_to: datetime,
-                           currency: str) -> int:
+    def estimate_day_delay(
+        self,
+        client: CriteoClient,
+        dimensions: list[str],
+        metrics: list[str],
+        date_to: datetime,
+        currency: str,
+    ) -> int:
         """
         Returns the amount of days it is safe to fetch data for.
         In case when query returns zero results, returns UserException.
@@ -219,7 +257,7 @@ class Component(ComponentBase):
         rows_per_day = API_ROW_LIMIT
         response = self._fetch_report(client, dimensions, metrics, date_from, date_to, currency)
         sample_report = response.read()
-        logging.info(f"Sample report content : {sample_report}")
+        logging.debug(f"Sample report content : {sample_report}")
         sample_report = sample_report.decode("utf-8")
         if sample_report:
             sample_report_len = int(sample_report.count("\n"))
@@ -246,11 +284,11 @@ class Component(ComponentBase):
         payload = {
             "grant_type": "client_credentials",
             "client_id": client_id,
-            "client_secret": client_secret
+            "client_secret": client_secret,
         }
         headers = {
             "accept": "application/json",
-            "content-type": "application/x-www-form-urlencoded"
+            "content-type": "application/x-www-form-urlencoded",
         }
 
         try:
@@ -260,12 +298,13 @@ class Component(ComponentBase):
             data = response.json()
 
         except requests.exceptions.RequestException as e:
-            if hasattr(e, 'response') and e.response is not None:
+            if hasattr(e, "response") and e.response is not None:
                 if e.response.status_code == 401:
                     raise UserException("Failed to authenticate using client credentials.")
                 else:
-                    raise UserException(f"{url} returned an unexpected error during authentication:"
-                                        f" {e.response.status_code}")
+                    raise UserException(
+                        f"{url} returned an unexpected error during authentication: {e.response.status_code}"
+                    )
             raise UserException(f"Failed to connect to {url}: {e}") from e
 
         return data.get("access_token")
