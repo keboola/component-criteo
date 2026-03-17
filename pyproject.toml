@@ -13,7 +13,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "flake8>=7.3.0",
     "ruff>=0.15.0",
     "mock",
     "freezegun",
@@ -21,6 +20,7 @@ dev = [
 
 [tool.ruff]
 line-length = 120
+target-version = "py313"
 
 [tool.ruff.lint]
-extend-select = ["I"]  # Add isort to default ruff rules
+extend-select = ["I", "UP"]  # Add isort to default ruff rules
