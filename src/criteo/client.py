@@ -1,8 +1,6 @@
-from __future__ import print_function
 
 from datetime import datetime
 from io import BufferedReader
-from typing import List
 
 import criteo_api_marketingsolutions_v2025_10 as cm
 from criteo_api_marketingsolutions_v2025_10 import Configuration
@@ -35,8 +33,8 @@ class CriteoClient:
 
     def get_report(
         self,
-        dimensions: List[str],
-        metrics: List[str],
+        dimensions: list[str],
+        metrics: list[str],
         date_from: datetime,
         date_to: datetime,
         currency: str,
