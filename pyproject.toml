@@ -3,7 +3,7 @@ name = "component-criteo"
 dynamic = ["version"]
 requires-python = "~=3.13.0"
 dependencies = [
-    "keboola-component>=1.1.0",
+    "keboola-component>=1.9.0",
     "keboola-utils",
     "keboola-http-client",
     "criteo-api-marketingsolutions-sdk==2025.10.0.260210",
