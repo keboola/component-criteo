@@ -80,7 +80,7 @@ dev = [
 requires-dist = [
     { name = "criteo-api-marketingsolutions-sdk", specifier = "==2025.10.0.260210" },
     { name = "dateparser" },
-    { name = "keboola-component", specifier = ">=1.1.0" },
+    { name = "keboola-component", specifier = ">=1.9.0" },
     { name = "keboola-http-client" },
     { name = "keboola-utils" },
     { name = "retry" },
