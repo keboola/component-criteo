@@ -20,7 +20,7 @@ class CriteoClientException(Exception):
 
 
 class CriteoClient:
-    def __init__(self, client: ApiClient) -> None:
+    def __init__(self, client: cm.ApiClient) -> None:
         self.client = client
 
     @classmethod
