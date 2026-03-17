@@ -58,7 +58,7 @@ class Component(ComponentBase):
         client = CriteoClient.login(access_token)
 
         loading_options = params.get(KEY_LOADING_OPTIONS)
-        incremental = loading_options.get(KEY_LOADING_OPTIONS_INCREMENTAL)
+        incremental = bool(loading_options.get(KEY_LOADING_OPTIONS_INCREMENTAL))
         pkey = loading_options.get(KEY_LOADING_OPTIONS_PKEY, [])
 
         if incremental and not pkey:
@@ -102,8 +102,8 @@ class Component(ComponentBase):
         fieldnames = self.fetch_data_and_write(client, dimensions, metrics, date_ranges, currency, table.full_path)
         logging.info("Parsing downloaded results")
         header_normalizer = get_normalizer(NormalizerStrategy.DEFAULT)
-        table.columns = header_normalizer.normalize_header(fieldnames)
-        self.write_tabledef_manifest(table)
+        table.column_names = header_normalizer.normalize_header(fieldnames)
+        self.write_manifest(table)
 
     @staticmethod
     def create_sliced_directory(table_path: str):
