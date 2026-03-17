@@ -102,7 +102,7 @@ class Component(ComponentBase):
         fieldnames = self.fetch_data_and_write(client, dimensions, metrics, date_ranges, currency, table.full_path)
         logging.info("Parsing downloaded results")
         header_normalizer = get_normalizer(NormalizerStrategy.DEFAULT)
-        table.column_names = header_normalizer.normalize_header(fieldnames)
+        table.columns = header_normalizer.normalize_header(fieldnames)
         self.write_manifest(table)
 
     @staticmethod
