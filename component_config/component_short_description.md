@@ -1,1 +1,1 @@
-Criteo is tool for displaying interactive banner advertisements, generated based on the online browsing preferences and behaviour for each customer. 
+Extracts report data from the Criteo Marketing Solutions API.
