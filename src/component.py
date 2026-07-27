@@ -172,6 +172,13 @@ class Component(ComponentBase):
             except JSONDecodeError as json_decode_err:
                 raise UserException(f"Failed to parse exception {exception}") from json_decode_err
 
+        # The Criteo API error body is expected to decode to a dict with structured
+        # "errors"/"error" fields. If it decodes to something else (e.g. a plain string),
+        # there is nothing structured to read, so fall back to stringifying it instead of
+        # crashing on `.get()` below.
+        if not isinstance(error, dict):
+            return str(error)
+
         try:
             if "errors" in error and len(error.get("errors", [])) > 0:
                 error_text = (
